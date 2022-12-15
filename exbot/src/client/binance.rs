@@ -1,8 +1,7 @@
 use crate::apis::{spot::Spot, ToUrl, API};
 use anyhow::Result;
-use reqwest::blocking::Client as InnerClient;
 
-use super::{ClientApi, RequestData};
+use super::{RequestData, RequestSigned};
 
 #[derive(Clone, Debug)]
 #[allow(dead_code)]
@@ -10,7 +9,6 @@ pub struct Client {
     host: String,
     api_key: String,
     secret_key: String,
-    inner_client: InnerClient,
 }
 
 impl Client {
@@ -23,10 +21,6 @@ impl Client {
             host: host.into(),
             api_key: api_key.into(),
             secret_key: secret_key.into(),
-            inner_client: InnerClient::builder()
-                .pool_idle_timeout(None)
-                .build()
-                .unwrap(),
         }
     }
 }
@@ -37,10 +31,6 @@ impl Default for Client {
             host: "https://api.binance.com".into(),
             api_key: "".into(),
             secret_key: "".into(),
-            inner_client: InnerClient::builder()
-                .pool_idle_timeout(None)
-                .build()
-                .unwrap(),
         }
     }
 }
@@ -82,54 +72,8 @@ impl ToUrl for Client {
     }
 }
 
-impl ClientApi for Client {
-    fn get<T: serde::de::DeserializeOwned>(
-        &self,
-        api: API,
-        request_data: RequestData,
-    ) -> Result<T> {
-        Ok(self
-            .inner_client
-            .get(self.to_url(api))
-            .query(request_data.query.as_slice())
-            .headers(request_data.headers)
-            .send()?
-            .json::<T>()?)
-    }
-    fn post<T: serde::de::DeserializeOwned>(
-        &self,
-        api: API,
-        request_data: RequestData,
-    ) -> Result<T> {
-        Ok(self
-            .inner_client
-            .post(self.to_url(api))
-            .headers(request_data.headers)
-            .send()?
-            .json::<T>()?)
-    }
-    fn put<T: serde::de::DeserializeOwned>(
-        &self,
-        api: API,
-        request_data: RequestData,
-    ) -> Result<T> {
-        Ok(self
-            .inner_client
-            .put(self.to_url(api))
-            .headers(request_data.headers)
-            .send()?
-            .json::<T>()?)
-    }
-    fn delete<T: serde::de::DeserializeOwned>(
-        &self,
-        api: API,
-        request_data: RequestData,
-    ) -> Result<T> {
-        Ok(self
-            .inner_client
-            .delete(self.to_url(api))
-            .headers(request_data.headers)
-            .send()?
-            .json::<T>()?)
+impl RequestSigned for Client {
+    fn signed(&self) -> Result<RequestData> {
+        todo!()
     }
 }
