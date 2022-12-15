@@ -1,5 +1,7 @@
-use crate::apis::{spot::Spot, ToUrl, API};
-use anyhow::Result;
+use crate::{
+    apis::{spot::Spot, ToUrl, API},
+    error::Result,
+};
 
 use super::{RequestData, RequestSigned};
 

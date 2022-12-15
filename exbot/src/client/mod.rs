@@ -1,5 +1,5 @@
 use crate::apis::{ToUrl, API};
-use anyhow::Result;
+use crate::error::Result;
 use reqwest::blocking::Client as InnerClient;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
