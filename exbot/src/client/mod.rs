@@ -33,7 +33,7 @@ impl RequestData {
         self.query.push(value);
         self
     }
-    /// merge input RequestData item, overwriting if exist
+    /// merge input RequestData, overwriting header if exist, other not
     pub fn merge(mut self, reqwest_data: RequestData) -> Self {
         reqwest_data.headers.into_iter().for_each(|(key, val)| {
             self.headers.insert(key.unwrap(), val);
@@ -143,6 +143,7 @@ mod tests {
 
     use super::*;
     #[test]
+    #[ignore = "request exchange api need network(proxy)"]
     fn kline_should_work() {
         let request_data = RequestData::default()
             .add_query(("symbol", "NEARUSDT"))
@@ -150,12 +151,18 @@ mod tests {
             .add_query(("limit", "5"));
         let response = Client::new(binance::Client::default())
             .get::<Vec<Vec<Value>>>(API::Spot(Spot::Klines), request_data);
-        assert!(response.is_ok());
         let data = response
             .unwrap()
             .into_iter()
             .map(|v| v.try_into().unwrap())
             .collect::<Vec<Kline<binance::Client>>>();
         assert_eq!(data.len(), 5);
+    }
+    #[test]
+    fn headermap_insert_overwriting() {
+        let mut hm = HeaderMap::new();
+        hm.insert("k1", "v1".parse().unwrap());
+        hm.insert("k1", "v2".parse().unwrap());
+        assert_eq!(hm.get("k1").unwrap(), "v2");
     }
 }
