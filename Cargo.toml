@@ -2,4 +2,5 @@
 members = [
 	"exbot",
 	"exbot-monitor",
+	"exbot-app/src-tauri",
 ]
