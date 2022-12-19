@@ -411,6 +411,11 @@ is-core-module@^2.9.0:
   dependencies:
     has "^1.0.3"
 
+klinecharts@^8.6.3:
+  version "8.6.3"
+  resolved "https://registry.npmmirror.com/klinecharts/-/klinecharts-8.6.3.tgz#9ff2c40e31d86ca0600abc5fb8bf546c61daf130"
+  integrity sha512-hGDtWiMNywEDneZFmt+vZ6tOYutCDWV5FPBcXcn7L8kGwe73Q5yJayk8UzP9pIQSBWyxswWIySKh/BVFA6GhuQ==
+
 magic-string@^0.25.7:
   version "0.25.9"
   resolved "https://registry.npmmirror.com/magic-string/-/magic-string-0.25.9.tgz#de7f9faf91ef8a1c91d02c2e5314c8277dbcdd1c"
