@@ -14,7 +14,7 @@ export default defineComponent({
   name: "KLine",
   mounted: function () {
     const kLineChart = init("k-line");
-    const updateData = (any: {}) => {
+    const updateData = (_: any) => {
       setTimeout(() => {
         const dataList = kLineChart.getDataList();
         const lastData = dataList[dataList.length - 1];

@@ -1,13 +1,7 @@
-<script lang="ts">
+<script setup lang="ts">
 // This starter template is using Vue 3 <script setup> SFCs
 // Check out https://vuejs.org/api/sfc-script-setup.html#script-setup
 import KLine from "./components/KLine.vue";
-import { defineComponent } from "vue";
-export default defineComponent({
-  components: {
-    KLine,
-  },
-});
 </script>
 
 <template>
