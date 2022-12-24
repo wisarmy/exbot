@@ -1,3 +1,85 @@
+use once_cell::sync::Lazy;
+use std::sync::Arc;
+use tracing::warn;
+
+use async_trait::async_trait;
+use ceresdb_client_rs::{
+    db_client::{Builder, DbClient},
+    model::request::QueryRequest,
+    RpcContext,
+};
+
+use crate::error::Result;
+
+use super::Storage;
+
+static CREATE_TABLES: Lazy<Vec<(&str, &str)>> = Lazy::new(|| {
+    vec![(
+        "exbot_klines",
+        r#"CREATE TABLE exbot_klines (
+        symbol string TAG,
+        interval string TAG,
+        open_time uint64,
+        open_price string,
+        high_price string,
+        low_price string,
+        close_price string,
+        volume string,
+        close_time uint64,
+        quote_volume string,
+        trades_number uint64,
+        taker_buy_base_volume string,
+        taker_buy_quote_volume string,
+        t timestamp NOT NULL,
+        TIMESTAMP KEY(t)) ENGINE=Analytic with (enable_ttl='false')"#,
+    )]
+});
+pub struct CeresDb {
+    client: Arc<dyn DbClient>,
+    ctx: RpcContext,
+}
+impl CeresDb {
+    pub fn new(endpoint: impl Into<String>) -> Self {
+        let client = Builder::new(
+            endpoint.into(),
+            ceresdb_client_rs::db_client::Mode::Standalone,
+        )
+        .build();
+        let ctx = RpcContext::new("public".to_string(), "".to_string());
+        Self { client, ctx }
+    }
+}
+#[async_trait]
+impl Storage for CeresDb {
+    async fn init(&self) -> Result<()> {
+        for (_index, (table, create_table_sql)) in CREATE_TABLES.iter().enumerate() {
+            // check if the table exists
+            let table_exist = self
+                .client
+                .query(
+                    &self.ctx,
+                    &QueryRequest {
+                        metrics: vec![table.to_string()],
+                        ql: format!("show tables like {}", table).to_string(),
+                    },
+                )
+                .await?;
+            if table_exist.rows.len() > 0 {
+                warn!("table {} already exists, ignored", table);
+                continue;
+            }
+
+            let req = QueryRequest {
+                metrics: vec![table.to_string()],
+                ql: create_table_sql.to_string(),
+            };
+
+            self.client.query(&self.ctx, &req).await?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use chrono::Local;

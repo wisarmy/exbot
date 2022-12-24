@@ -8,8 +8,18 @@ pub enum ExbotError {
     InvalidHeader { expected: String, found: String },
     #[error("unknown error")]
     Unknown,
+    #[error("{0:?}")]
+    Error(String),
     #[error("serde json error")]
     SerdeJson(#[from] serde_json::Error),
     #[error("reqwest error")]
     Reqwest(#[from] reqwest::Error),
+    #[error("ceresdb client error: {0:?}")]
+    CeresDb(ceresdb_client_rs::Error),
+}
+
+impl From<ceresdb_client_rs::Error> for ExbotError {
+    fn from(err: ceresdb_client_rs::Error) -> Self {
+        ExbotError::CeresDb(err)
+    }
 }
