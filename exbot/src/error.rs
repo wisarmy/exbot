@@ -11,7 +11,7 @@ pub enum ExbotError {
     #[error("unknown error")]
     Unknown,
     #[error("{0}")]
-    Error(&'static str),
+    Error(String),
     #[error("io error {0:?}")]
     IO(#[from] io::Error),
     #[error("toml error")]
@@ -28,4 +28,11 @@ impl From<ceresdb_client_rs::Error> for ExbotError {
     fn from(err: ceresdb_client_rs::Error) -> Self {
         ExbotError::CeresDb(err)
     }
+}
+
+#[macro_export]
+macro_rules! exbot_error {
+    ($($arg:tt)*) => {{
+        $crate::error::ExbotError::Error(format!($($arg)*))
+    }}
 }

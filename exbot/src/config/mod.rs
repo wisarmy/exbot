@@ -5,10 +5,7 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
-use crate::{
-    error::{ExbotError, Result},
-    storage,
-};
+use crate::{error::Result, exbot_error, storage};
 
 const EXBOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let mut exbot_path = home_dir().unwrap().join(".exbot");
@@ -35,10 +32,8 @@ pub fn load_config() -> RwLock<Option<Config>> {
 impl Config {
     pub fn init(&self) -> Result<()> {
         if self.config_path().exists() {
-            return Err(ExbotError::Error(
-                "exbot config file exbot.toml already exists!",
-            ))
-            .inspect_err(|e| error!("{}", e));
+            return Err(exbot_error!("exbot config file exbot.toml already exists!"))
+                .inspect_err(|e| error!("{}", e));
         }
         fs::create_dir_all(EXBOT_PATH.as_path())
             .inspect_err(|e| error!("Create dir {:?}: {}", EXBOT_PATH, e))?;

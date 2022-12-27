@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
-use crate::error::{ExbotError, Result};
+use crate::{error::Result, exbot_error};
 
 use self::cresedb::CeresDb;
 
@@ -30,7 +30,7 @@ pub async fn init(c: Config) -> Result<()> {
             let store = CeresDb::new(c.db_endpoint);
             store.init().await
         }
-        _ => Err(ExbotError::Error("not support db type")),
+        _ => Err(exbot_error!("not support db type")),
     }
     .inspect_err(|e| error!("init err: {:?}", e))
 }
