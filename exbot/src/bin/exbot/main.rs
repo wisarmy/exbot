@@ -1,5 +1,9 @@
 use clap::{Parser, Subcommand};
-use exbot::storage;
+use exbot::{
+    config::Config,
+    error::Result,
+    storage::{self, DbType},
+};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 /// Exbot program
@@ -13,10 +17,12 @@ struct Cli {
 #[derive(Subcommand, Debug)]
 enum Command {
     Init {
-        /// ceresdb endpoint
+        /// ceresdb
         // TODO more db support in the future
-        #[arg(short, long, default_value_t = String::from("127.0.0.1:8831"))]
-        endpoint: String,
+        #[arg(long, value_enum, default_value_t = DbType::CeresDb)]
+        db_type: DbType,
+        #[arg(long, default_value_t = String::from("127.0.0.1:8831"))]
+        db_endpoint: String,
     },
     Daemon {
         #[arg(short, long)]
@@ -24,7 +30,7 @@ enum Command {
     },
 }
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::new(
             std::env::var("RUST_LOG").unwrap_or_else(|_| "info".into()),
@@ -34,11 +40,25 @@ async fn main() {
 
     let cli = Cli::parse();
     match cli.commnad {
-        Command::Init { endpoint } => {
-            storage::init(endpoint).await;
+        Command::Init {
+            db_type,
+            db_endpoint,
+        } => {
+            // init storage
+            let storage_config = storage::Config {
+                db_type,
+                db_endpoint,
+            };
+            storage::init(storage_config.clone()).await?;
+            // init config
+            Config {
+                storage: storage_config,
+            }
+            .init()?;
         }
         Command::Daemon { config } => {
             println!(">> daemon {}", config);
         }
     }
+    Ok(())
 }

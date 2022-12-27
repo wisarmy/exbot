@@ -1,3 +1,5 @@
+use std::io;
+
 use thiserror::Error;
 
 pub type Result<T> = std::result::Result<T, ExbotError>;
@@ -8,8 +10,12 @@ pub enum ExbotError {
     InvalidHeader { expected: String, found: String },
     #[error("unknown error")]
     Unknown,
-    #[error("{0:?}")]
-    Error(String),
+    #[error("{0}")]
+    Error(&'static str),
+    #[error("io error {0:?}")]
+    IO(#[from] io::Error),
+    #[error("toml error")]
+    Toml(#[from] toml::ser::Error),
     #[error("serde json error")]
     SerdeJson(#[from] serde_json::Error),
     #[error("reqwest error")]
