@@ -12,7 +12,7 @@ pub enum ExbotError {
     Unknown,
     #[error("{0}")]
     Error(String),
-    #[error("io error {0:?}")]
+    #[error("io error")]
     IO(#[from] io::Error),
     #[error("toml error")]
     Toml(#[from] toml::ser::Error),
@@ -20,14 +20,8 @@ pub enum ExbotError {
     SerdeJson(#[from] serde_json::Error),
     #[error("reqwest error")]
     Reqwest(#[from] reqwest::Error),
-    #[error("ceresdb client error: {0:?}")]
-    CeresDb(ceresdb_client_rs::Error),
-}
-
-impl From<ceresdb_client_rs::Error> for ExbotError {
-    fn from(err: ceresdb_client_rs::Error) -> Self {
-        ExbotError::CeresDb(err)
-    }
+    #[error("ceresdb client error")]
+    CeresDb(#[from] ceresdb_client_rs::Error),
 }
 
 #[macro_export]
