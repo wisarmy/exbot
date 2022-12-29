@@ -1,4 +1,3 @@
-#![feature(async_closure)]
 use clap::{Parser, Subcommand};
 use exbot::{
     config::{self, Config},
@@ -59,7 +58,7 @@ async fn main() -> Result<()> {
         }
         Command::Daemon => {
             info!("Initializing daemon");
-            config::ext_async::with_config(async move |c| {
+            config::ext_async::with_config(|c| async move {
                 debug!("With config: {:?}", c);
                 sync_data::kline(c).await;
             })
