@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, str::FromStr, sync::RwLock};
+use std::{fs, future::Future, path::PathBuf, str::FromStr, sync::RwLock};
 
 use home::home_dir;
 use once_cell::sync::{Lazy, OnceCell};
@@ -6,9 +6,6 @@ use serde::{Deserialize, Serialize};
 use tracing::{error, info};
 
 use crate::{error::Result, exbot_error, storage};
-
-#[cfg(feature = "async_config")]
-pub mod ext_async;
 
 const EXBOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let mut exbot_path = home_dir().unwrap().join(".exbot");
@@ -49,8 +46,17 @@ fn load() -> &'static RwLock<Option<Config>> {
     })
 }
 
+#[cfg(not(feature = "async_config"))]
 pub fn with_config<T, F>(f: impl FnOnce(&Config) -> T) -> T {
     f(load().read().unwrap().as_ref().unwrap())
+}
+#[cfg(feature = "async_config")]
+pub async fn with_config<T, F, Fut>(f: F) -> T
+where
+    F: FnOnce(Config) -> Fut,
+    Fut: Future<Output = T>,
+{
+    f(load().read().unwrap().as_ref().unwrap().clone()).await
 }
 
 impl Config {
