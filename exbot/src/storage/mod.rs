@@ -12,13 +12,14 @@ pub trait Storage {
     async fn init(&self) -> Result<()>;
 }
 
-#[derive(clap::ValueEnum, Serialize, Deserialize, Debug, Clone)]
+#[derive(clap::ValueEnum, Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum DbType {
+    #[default]
     CeresDb,
     Redis,
 }
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
     pub db_type: DbType,
     pub db_endpoint: String,

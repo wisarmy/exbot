@@ -1,10 +1,14 @@
+#![feature(async_closure)]
 use clap::{Parser, Subcommand};
 use exbot::{
-    config::Config,
+    config::{self, Config},
     error::Result,
     storage::{self, DbType},
 };
+use tracing::{debug, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+
+mod sync_data;
 
 /// Exbot program
 #[derive(Parser, Debug)]
@@ -24,10 +28,7 @@ enum Command {
         #[arg(long, default_value_t = String::from("127.0.0.1:8831"))]
         db_endpoint: String,
     },
-    Daemon {
-        #[arg(short, long)]
-        config: String,
-    },
+    Daemon,
 }
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -56,8 +57,13 @@ async fn main() -> Result<()> {
             }
             .init()?;
         }
-        Command::Daemon { config } => {
-            println!(">> daemon {}", config);
+        Command::Daemon => {
+            info!("Initializing daemon");
+            config::ext_async::with_config(async move |c| {
+                debug!("With config: {:?}", c);
+                sync_data::kline(c).await;
+            })
+            .await;
         }
     }
     Ok(())
