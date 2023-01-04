@@ -5,7 +5,7 @@ use tracing::warn;
 use async_trait::async_trait;
 use ceresdb_client_rs::{
     db_client::{Builder, DbClient},
-    model::request::QueryRequest,
+    model::{request::QueryRequest, QueryResponse},
     RpcContext,
 };
 
@@ -51,6 +51,7 @@ impl CeresDb {
 }
 #[async_trait]
 impl Storage for CeresDb {
+    type QueryItem = QueryResponse;
     async fn init(&self) -> Result<()> {
         for (_index, (table, create_table_sql)) in CREATE_TABLES.iter().enumerate() {
             // check if the table exists
@@ -78,6 +79,15 @@ impl Storage for CeresDb {
         }
         Ok(())
     }
+    async fn query(&self, metrics: Vec<String>, sql: String) -> Result<Self::QueryItem> {
+        let req = QueryRequest {
+            metrics,
+            ql: sql.to_string(),
+        };
+
+        let item = self.client.query(&self.ctx, &req).await?;
+        Ok(item)
+    }
 }
 
 #[cfg(test)]
@@ -91,7 +101,7 @@ mod tests {
         RpcContext,
     };
 
-    const TABLE: &str = "exbot_test";
+    pub const TABLE: &str = "cresedb_test";
 
     #[tokio::test]
     #[ignore = "need cresedb server"]
@@ -109,12 +119,15 @@ mod tests {
         write(&client, &rpc_ctx).await;
         // read
         read(&client, &rpc_ctx).await;
+        // write raw
+        write_raw(&client, &rpc_ctx).await;
         // drop table
         drop_table(&client, &rpc_ctx).await;
     }
 
     async fn create_table(client: &Arc<dyn DbClient>, rpc_ctx: &RpcContext) {
-        let create_table_sql = r#"CREATE TABLE exbot_test (
+        let create_table_sql = format!(
+            r#"CREATE TABLE {} (
         str_tag string TAG,
         int_tag int32 TAG,
         var_tag varbinary TAG,
@@ -122,7 +135,9 @@ mod tests {
         int_field int32,
         bin_field varbinary,
         t timestamp NOT NULL,
-        TIMESTAMP KEY(t)) ENGINE=Analytic with (enable_ttl='false')"#;
+        TIMESTAMP KEY(t)) ENGINE=Analytic with (enable_ttl='false')"#,
+            TABLE
+        );
         let req = QueryRequest {
             metrics: vec![TABLE.to_string()],
             ql: create_table_sql.to_string(),
@@ -192,6 +207,22 @@ mod tests {
         let write_req = write_req_builder.build();
         let res = client.write(rpc_ctx, &write_req).await.unwrap();
         assert_eq!(res.success, 2);
+    }
+
+    async fn write_raw(client: &Arc<dyn DbClient>, rpc_ctx: &RpcContext) {
+        let req = QueryRequest {
+            metrics: vec![TABLE.to_string()],
+            ql: format!(
+                r#"insert into {} (t, str_tag, int_tag, str_field) values ({}, '{}', {}, '{}')"#,
+                TABLE,
+                Local::now().timestamp_millis(),
+                "str_tag3",
+                44,
+                "str_field3"
+            ),
+        };
+        let resp = client.query(rpc_ctx, &req).await.unwrap();
+        assert_eq!(resp.affected_rows, 1);
     }
 
     async fn read(client: &Arc<dyn DbClient>, rpc_ctx: &RpcContext) {
