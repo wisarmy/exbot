@@ -3,10 +3,9 @@ use std::sync::Arc;
 use tracing::warn;
 
 use async_trait::async_trait;
-use ceresdb_client_rs::{
+use ceresdb_client::{
     db_client::{Builder, DbClient},
-    model::{request::QueryRequest, QueryResponse},
-    RpcContext,
+    RpcContext, SqlQueryRequest, SqlQueryResponse,
 };
 
 use crate::error::Result;
@@ -40,28 +39,24 @@ pub struct CeresDb {
 }
 impl CeresDb {
     pub fn new(endpoint: impl Into<String>) -> Self {
-        let client = Builder::new(
-            endpoint.into(),
-            ceresdb_client_rs::db_client::Mode::Standalone,
-        )
-        .build();
-        let ctx = RpcContext::new("public".to_string(), "".to_string());
+        let client = Builder::new(endpoint.into(), ceresdb_client::db_client::Mode::Direct).build();
+        let ctx = RpcContext::default();
         Self { client, ctx }
     }
 }
 #[async_trait]
 impl Storage for CeresDb {
-    type QueryItem = QueryResponse;
+    type QueryItem = SqlQueryResponse;
     async fn init(&self) -> Result<()> {
         for (_index, (table, create_table_sql)) in CREATE_TABLES.iter().enumerate() {
             // check if the table exists
             let table_exist = self
                 .client
-                .query(
+                .sql_query(
                     &self.ctx,
-                    &QueryRequest {
-                        metrics: vec![table.to_string()],
-                        ql: format!("show tables like {}", table).to_string(),
+                    &SqlQueryRequest {
+                        tables: vec![table.to_string()],
+                        sql: format!("show tables like {}", table).to_string(),
                     },
                 )
                 .await?;
@@ -70,22 +65,22 @@ impl Storage for CeresDb {
                 continue;
             }
 
-            let req = QueryRequest {
-                metrics: vec![table.to_string()],
-                ql: create_table_sql.to_string(),
+            let req = SqlQueryRequest {
+                tables: vec![table.to_string()],
+                sql: create_table_sql.to_string(),
             };
 
-            self.client.query(&self.ctx, &req).await?;
+            self.client.sql_query(&self.ctx, &req).await?;
         }
         Ok(())
     }
-    async fn query(&self, metrics: Vec<String>, sql: String) -> Result<Self::QueryItem> {
-        let req = QueryRequest {
-            metrics,
-            ql: sql.to_string(),
+    async fn query(&self, tables: Vec<String>, sql: String) -> Result<Self::QueryItem> {
+        let req = SqlQueryRequest {
+            tables,
+            sql: sql.to_string(),
         };
 
-        let item = self.client.query(&self.ctx, &req).await?;
+        let item = self.client.sql_query(&self.ctx, &req).await?;
         Ok(item)
     }
 }
@@ -95,10 +90,13 @@ mod tests {
     use chrono::Local;
     use std::sync::Arc;
 
-    use ceresdb_client_rs::{
+    use ceresdb_client::{
         db_client::{Builder, DbClient},
-        model::{request::QueryRequest, value::Value, write::WriteRequestBuilder},
-        RpcContext,
+        model::{
+            value::Value,
+            write::{point::PointBuilder, Request as WriteRequest},
+        },
+        RpcContext, SqlQueryRequest,
     };
 
     pub const TABLE: &str = "cresedb_test";
@@ -108,10 +106,10 @@ mod tests {
     async fn read_write_should_work() {
         let client = Builder::new(
             "127.0.0.1:8831".to_string(),
-            ceresdb_client_rs::db_client::Mode::Standalone,
+            ceresdb_client::db_client::Mode::Direct,
         )
         .build();
-        let rpc_ctx = RpcContext::new("public".to_string(), "".to_string());
+        let rpc_ctx = RpcContext::default();
 
         // create table
         create_table(&client, &rpc_ctx).await;
@@ -138,31 +136,29 @@ mod tests {
         TIMESTAMP KEY(t)) ENGINE=Analytic with (enable_ttl='false')"#,
             TABLE
         );
-        let req = QueryRequest {
-            metrics: vec![TABLE.to_string()],
-            ql: create_table_sql.to_string(),
+        let req = SqlQueryRequest {
+            tables: vec![TABLE.to_string()],
+            sql: create_table_sql.to_string(),
         };
-        let resp = client.query(rpc_ctx, &req).await.unwrap();
+        let resp = client.sql_query(rpc_ctx, &req).await.unwrap();
         assert_eq!(resp.affected_rows, 0);
     }
 
     async fn drop_table(client: &Arc<dyn DbClient>, rpc_ctx: &RpcContext) {
         let drop_table_sql = format!("DROP TABLE {}", TABLE);
-        let req = QueryRequest {
-            metrics: vec![TABLE.to_string()],
-            ql: drop_table_sql.to_string(),
+        let req = SqlQueryRequest {
+            tables: vec![TABLE.to_string()],
+            sql: drop_table_sql.to_string(),
         };
-        let resp = client.query(rpc_ctx, &req).await.unwrap();
+        let resp = client.sql_query(rpc_ctx, &req).await.unwrap();
         assert_eq!(resp.affected_rows, 0);
     }
 
     async fn write(client: &Arc<dyn DbClient>, rpc_ctx: &RpcContext) {
         let ts1 = Local::now().timestamp_millis();
-        let mut write_req_builder = WriteRequestBuilder::default();
+        let mut write_req = WriteRequest::default();
         // first row
-        write_req_builder
-            .row_builder()
-            .metric(TABLE.to_string())
+        let point1 = PointBuilder::new(TABLE.to_string())
             .timestamp(ts1)
             .tag("str_tag".to_string(), Value::String("tag_val1".to_string()))
             .tag("int_tag".to_string(), Value::Int32(42))
@@ -179,13 +175,11 @@ mod tests {
                 "bin_field".to_string(),
                 Value::Varbinary(b"field_bin_val1".to_vec()),
             )
-            .finish()
+            .build()
             .unwrap();
 
         // second row
-        write_req_builder
-            .row_builder()
-            .metric(TABLE.to_string())
+        let point2 = PointBuilder::new(TABLE.to_string())
             .timestamp(ts1 + 40)
             .tag("str_tag".to_string(), Value::String("tag_val2".to_string()))
             .tag("int_tag".to_string(), Value::Int32(43))
@@ -201,18 +195,19 @@ mod tests {
                 "bin_field".to_string(),
                 Value::Varbinary(b"field_bin_val2".to_vec()),
             )
-            .finish()
+            .build()
             .unwrap();
 
-        let write_req = write_req_builder.build();
+        write_req.add_points(vec![point1, point2]);
+
         let res = client.write(rpc_ctx, &write_req).await.unwrap();
         assert_eq!(res.success, 2);
     }
 
     async fn write_raw(client: &Arc<dyn DbClient>, rpc_ctx: &RpcContext) {
-        let req = QueryRequest {
-            metrics: vec![TABLE.to_string()],
-            ql: format!(
+        let req = SqlQueryRequest {
+            tables: vec![TABLE.to_string()],
+            sql: format!(
                 r#"insert into {} (t, str_tag, int_tag, str_field) values ({}, '{}', {}, '{}')"#,
                 TABLE,
                 Local::now().timestamp_millis(),
@@ -221,16 +216,16 @@ mod tests {
                 "str_field3"
             ),
         };
-        let resp = client.query(rpc_ctx, &req).await.unwrap();
+        let resp = client.sql_query(rpc_ctx, &req).await.unwrap();
         assert_eq!(resp.affected_rows, 1);
     }
 
     async fn read(client: &Arc<dyn DbClient>, rpc_ctx: &RpcContext) {
-        let req = QueryRequest {
-            metrics: vec![TABLE.to_string()],
-            ql: format!("select * from {}", TABLE),
+        let req = SqlQueryRequest {
+            tables: vec![TABLE.to_string()],
+            sql: format!("select * from {}", TABLE),
         };
-        let resp = client.query(rpc_ctx, &req).await.unwrap();
+        let resp = client.sql_query(rpc_ctx, &req).await.unwrap();
         assert_eq!(resp.rows.len(), 2);
     }
 }

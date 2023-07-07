@@ -21,7 +21,7 @@ pub enum ExbotError {
     #[error("reqwest error")]
     Reqwest(#[from] reqwest::Error),
     #[error("ceresdb client error")]
-    CeresDb(#[from] ceresdb_client_rs::Error),
+    CeresDb(#[from] ceresdb_client::Error),
 }
 
 #[macro_export]

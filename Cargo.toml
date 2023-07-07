@@ -4,3 +4,4 @@ members = [
 	"exbot-monitor",
 	"exbot-app/src-tauri",
 ]
+resolver = "2"
