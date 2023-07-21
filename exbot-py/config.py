@@ -1,4 +1,4 @@
-import toml
+import tomllib
 from pydantic import BaseModel
 
 class Exchange(BaseModel):
@@ -13,5 +13,6 @@ class Config:
         self.exchange = Exchange(**data['exchange'])
 
 def load_config(config_path) -> Config:
-    config = toml.load(config_path)
-    return Config(config)
+    with open(config_path, 'rb') as f:
+        config = tomllib.load(f)
+        return Config(config)
