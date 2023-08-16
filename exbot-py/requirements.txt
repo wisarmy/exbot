@@ -2,3 +2,5 @@ ccxt==4.0.3
 pydantic
 mplfinance
 freqtrade
+plotly
+dash

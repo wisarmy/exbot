@@ -3,6 +3,7 @@ import ccxt
 import json
 import time
 from ccxt.base.errors import RateLimitExceeded
+from typing import Literal
 
 
 class BitgetExchange:
@@ -53,6 +54,9 @@ class BitgetExchange:
         except Exception as e:
             logging.warning(f"An unknown error occurred in get_open_orders_debug(): {e}")
         return open_orders
+
+    def create_order_limit(self, symbol: str, side: Literal['buy', 'sell'], amount: float, price: float, params: dict = {}):
+        return self.exchange.create_order(symbol, 'limit', side, amount, price, params)
 
     def get_current_candle(self, symbol: str, timeframe='1m', retries=3, delay=60):
         for _ in range(retries):

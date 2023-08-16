@@ -5,10 +5,18 @@ from config import load_config
 import numpy as np
 
 from exchanges import exchange
-from strategies import ichiv1
-import mplfinance as mpf
 from download import download_candles
+import plotly.graph_objects as go
+from dash import Dash, dcc, html, Input, Output
 
+app = Dash(__name__)
+
+app.layout = html.Div([
+    dcc.Interval(id='update', interval=5*1000, n_intervals=0),
+    dcc.Graph(id="graph"),
+])
+
+pd.set_option('display.max_rows', 10)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
 
@@ -35,9 +43,37 @@ if __name__ == '__main__':
 
     df = pd.DataFrame(ohlcv, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
     df['date'] = pd.to_datetime(df['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
+    # get last 200 rows
+    df = df.tail(200).reset_index(drop=True)
+    print(df)
+    @app.callback(
+        Output("graph", "figure"),
+        Input("update", "n_intervals")
+    )
+    def display_candlestick(n):
+        global df
+        # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
+        last_date = df.iloc[-1]['date']
+        current_candle = ex.get_current_candle(args.symbol, args.timeframe)
+        current_candle[0] = pd.Timestamp(current_candle[0], unit='ms', tz='Asia/Shanghai')
+        if last_date == current_candle[0]:
+            df.iloc[-1] = current_candle
+        elif last_date < current_candle[0]: 
+            df.loc[len(df)] = current_candle
+        print(df)
 
-    df.set_index('date', inplace=True)
-    # df = df.sort_index(ascending=True)
-    apds = []
-    mpf.plot(df, addplot=apds, type='candle', mav=(3,6,9), volume=True, style='yahoo', title=args.symbol)
+        fig = go.Figure(go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close']))
+
+        fig.update_layout(
+            height=800,
+            title=args.symbol,
+            xaxis_rangeslider_visible=False
+        )
+
+        return fig
+
+    app.run_server(debug=True)
+
+
+
     
