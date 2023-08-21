@@ -12,6 +12,7 @@ from dash import Dash, dcc, html, Input, Output
 app = Dash(__name__)
 
 app.layout = html.Div([
+    dcc.Dropdown(['NEAR/USDT:USDT', 'BTC/USDT:USDT', 'ETH/USDT:USDT'], 'NEAR/USDT:USDT', id='symbol'),
     dcc.Interval(id='update', interval=5*1000, n_intervals=0),
     dcc.Graph(id="graph"),
 ])
@@ -19,6 +20,20 @@ app.layout = html.Div([
 pd.set_option('display.max_rows', 10)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
+
+
+# candle data
+chardata = {}
+
+
+def get_chart(ex, symbol, timeframe, limit):
+    ohlcv = download_candles(ex, symbol, timeframe)
+    df = pd.DataFrame(ohlcv, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
+    df['date'] = pd.to_datetime(df['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
+    # get last some rows
+    df = df.tail(limit).reset_index(drop=True)
+    chardata[symbol] = df
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='exbot for python')
@@ -38,25 +53,25 @@ if __name__ == '__main__':
     ex = exchange.Exchange(config.exchange).get()
     ex.load_markets()
     print(ex.id())
+    get_chart(ex, args.symbol, args.timeframe, 200)
 
-    ohlcv = download_candles(ex, args.symbol, args.timeframe)
-
-    df = pd.DataFrame(ohlcv, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
-    df['date'] = pd.to_datetime(df['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
-    # get last 200 rows
-    df = df.tail(200).reset_index(drop=True)
-    print(df)
     @app.callback(
         Output("graph", "figure"),
-        Input("update", "n_intervals")
+        Input("update", "n_intervals"),
+        Input("symbol", "value")
     )
-    def display_candlestick(n):
-        global df
+    def display_candlestick(n, symbol):
+        print(f"symbol: {symbol}")
+        if symbol != args.symbol:
+            if symbol not in chardata:
+                get_chart(ex, symbol, args.timeframe, 200)
+            args.symbol = symbol
+        df = chardata[symbol] 
         # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
         last_date = df.iloc[-1]['date']
         # 只获取最新的蜡烛图，会导致最终的蜡烛图没更新到最新就切换到下一个蜡烛图了，造成数据不准确
         # 所以获取最后两根蜡烛图去修复上一根蜡烛图的数据
-        last_candles: list = ex.get_candles(args.symbol, args.timeframe, None, 2)
+        last_candles: list = ex.get_candles(symbol, args.timeframe, None, 2)
 
         #print(last_candles)
         current_candle: list = last_candles[-1]
@@ -85,7 +100,7 @@ if __name__ == '__main__':
 
         fig.update_layout(
             height=800,
-            title=args.symbol,
+            # title=symbol,
             xaxis_rangeslider_visible=False
         )
         fig.update_traces(
