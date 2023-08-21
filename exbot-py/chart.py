@@ -54,20 +54,43 @@ if __name__ == '__main__':
         global df
         # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
         last_date = df.iloc[-1]['date']
-        current_candle = ex.get_current_candle(args.symbol, args.timeframe)
+        # 只获取最新的蜡烛图，会导致最终的蜡烛图没更新到最新就切换到下一个蜡烛图了，造成数据不准确
+        # 所以获取最后两根蜡烛图去修复上一根蜡烛图的数据
+        last_candles: list = ex.get_candles(args.symbol, args.timeframe, None, 2)
+
+        #print(last_candles)
+        current_candle: list = last_candles[-1]
+        last_candle: list = last_candles[-2]
+
         current_candle[0] = pd.Timestamp(current_candle[0], unit='ms', tz='Asia/Shanghai')
+        last_candle[0] = pd.Timestamp(last_candle[0], unit='ms', tz='Asia/Shanghai')
+        
         if last_date == current_candle[0]:
             df.iloc[-1] = current_candle
         elif last_date < current_candle[0]: 
             df.loc[len(df)] = current_candle
+            # 添加新的蜡烛图后，需要把上一根蜡烛图的数据修复
+            df.iloc[-2] = last_candle
         print(df)
 
-        fig = go.Figure(go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close']))
+        fig = go.Figure(go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'], showlegend=True))
+        fig.add_trace(go.Scatter(x=[df['date'].iloc[0], df['date'].iloc[-1]], y=[df['close'].iloc[-1],df['close'].iloc[-1]], mode='lines', name='Current Price',line=dict(dash='dash')))
+        # 添加价格注释
+        fig.add_annotation(x=df['date'].iloc[-1], y=df['close'].iloc[-1],
+                   text=f'Current Price: {df["close"].iloc[-1]:.4f}',
+                   showarrow=False,
+                   arrowhead=0,
+                   xanchor='left',
+                    )
 
         fig.update_layout(
             height=800,
             title=args.symbol,
             xaxis_rangeslider_visible=False
+        )
+        fig.update_traces(
+            visible=True,
+            opacity=0.9,
         )
 
         return fig
