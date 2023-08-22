@@ -1,8 +1,8 @@
 import argparse
+from datetime import timedelta
 import logging
 import pandas as pd
 from config import load_config
-import numpy as np
 
 from exchanges import exchange
 from download import download_candles
@@ -38,7 +38,7 @@ def get_chart(ex, symbol, timeframe, limit):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='exbot for python')
     parser.add_argument('-c', '--config', type=str, required=True, help='config file path')
-    parser.add_argument('--symbol', type=str, required=True, help='The trading symbol to use')
+    # parser.add_argument('--symbol', type=str, required=True, help='The trading symbol to use')
     parser.add_argument('-t', '--timeframe', type=str, required=True, help='timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M')
     # add arg verbose
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose mode')
@@ -53,7 +53,6 @@ if __name__ == '__main__':
     ex = exchange.Exchange(config.exchange).get()
     ex.load_markets()
     print(ex.id())
-    get_chart(ex, args.symbol, args.timeframe, 200)
 
     @app.callback(
         Output("graph", "figure"),
@@ -62,10 +61,9 @@ if __name__ == '__main__':
     )
     def display_candlestick(n, symbol):
         print(f"symbol: {symbol}")
-        if symbol != args.symbol:
-            if symbol not in chardata:
-                get_chart(ex, symbol, args.timeframe, 200)
-            args.symbol = symbol
+        if symbol not in chardata:
+            get_chart(ex, symbol, args.timeframe, 200)
+        args.symbol = symbol
         df = chardata[symbol] 
         # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
         last_date = df.iloc[-1]['date']
@@ -88,20 +86,45 @@ if __name__ == '__main__':
             df.iloc[-2] = last_candle
         print(df)
 
-        fig = go.Figure(go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'], showlegend=True))
-        fig.add_trace(go.Scatter(x=[df['date'].iloc[0], df['date'].iloc[-1]], y=[df['close'].iloc[-1],df['close'].iloc[-1]], mode='lines', name='Current Price',line=dict(dash='dash')))
-        # 添加价格注释
-        fig.add_annotation(x=df['date'].iloc[-1], y=df['close'].iloc[-1],
-                   text=f'Current Price: {df["close"].iloc[-1]:.4f}',
-                   showarrow=False,
-                   arrowhead=0,
-                   xanchor='left',
-                    )
+        fig =  go.Figure(data=[go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
+        current_price = df['close'].iloc[-1]
+        color = 'green' if current_price >= df['close'].iloc[-2] else 'red';
+        fig.add_shape(
+            type='line',
+            y0=current_price, y1=current_price,
+            x0=df['date'].iloc[0], x1=df['date'].iloc[-1]+timedelta(minutes=100),
+            line=dict(
+                color=color,
+                width=1,
+                dash='dash',
+            ),
+        )
+        # 在Y轴上显示当前价格
+        fig.add_annotation(
+            xref='paper', yref='y',
+            x=1.035, y=current_price,
+            text="{:.4f}".format(current_price),
+            showarrow=False,
+            font=dict(
+                size=12,
+                color='White',
+            ),
+            bgcolor=color,
+            bordercolor=color,
+            borderwidth=1,
+        )
 
         fig.update_layout(
             height=800,
-            # title=symbol,
-            xaxis_rangeslider_visible=False
+            title={
+                'text': symbol,
+                'x': 0.05,  # 设置标题在X轴上的位置
+                'xanchor': 'left',  # 设置标题的横向锚点为左侧
+            },
+            xaxis_rangeslider_visible=False,
+            yaxis=dict(
+                side='right'
+            ),
         )
         fig.update_traces(
             visible=True,
