@@ -116,21 +116,12 @@ if __name__ == '__main__':
 
         fig.update_layout(
             height=800,
-            title={
-                'text': symbol,
-                'x': 0.05,  # 设置标题在X轴上的位置
-                'xanchor': 'left',  # 设置标题的横向锚点为左侧
-            },
+            title=symbol,
             xaxis_rangeslider_visible=False,
             yaxis=dict(
                 side='right'
             ),
         )
-        fig.update_traces(
-            visible=True,
-            opacity=0.9,
-        )
-
         return fig
 
     app.run_server(debug=True)
