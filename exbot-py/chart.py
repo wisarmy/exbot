@@ -7,14 +7,18 @@ from config import load_config
 from exchanges import exchange
 from download import download_candles
 import plotly.graph_objects as go
-from dash import Dash, dcc, html, Input, Output
+from dash import Dash, State, dcc, html, Input, Output
 
 app = Dash(__name__)
 
 app.layout = html.Div([
     dcc.Dropdown(['NEAR/USDT:USDT', 'BTC/USDT:USDT', 'ETH/USDT:USDT'], 'NEAR/USDT:USDT', id='symbol'),
     dcc.Interval(id='update', interval=5*1000, n_intervals=0),
-    dcc.Graph(id="graph"),
+    dcc.Graph(id="graph",
+        config={
+            'scrollZoom': True,  # 启用或禁用滚动缩放
+        }
+    ),
 ])
 
 pd.set_option('display.max_rows', 10)
@@ -57,13 +61,14 @@ if __name__ == '__main__':
     @app.callback(
         Output("graph", "figure"),
         Input("update", "n_intervals"),
-        Input("symbol", "value")
+        Input("symbol", "value"),
+        State("graph", "relayoutData")
+
     )
-    def display_candlestick(n, symbol):
+    def display_candlestick(n, symbol, relayout_data):
         print(f"symbol: {symbol}")
         if symbol not in chardata:
-            get_chart(ex, symbol, args.timeframe, 200)
-        args.symbol = symbol
+            get_chart(ex, symbol, args.timeframe, 2000)
         df = chardata[symbol] 
         # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
         last_date = df.iloc[-1]['date']
@@ -84,7 +89,10 @@ if __name__ == '__main__':
             df.loc[len(df)] = current_candle
             # 添加新的蜡烛图后，需要把上一根蜡烛图的数据修复
             df.iloc[-2] = last_candle
-        print(df)
+
+        # 限制初始显示的数据范围为最后200条
+        df_display = df.tail(200)
+        print(df_display)
 
         fig =  go.Figure(data=[go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
         current_price = df['close'].iloc[-1]
@@ -92,7 +100,7 @@ if __name__ == '__main__':
         fig.add_shape(
             type='line',
             y0=current_price, y1=current_price,
-            x0=df['date'].iloc[0], x1=df['date'].iloc[-1]+timedelta(minutes=100),
+            x0=df['date'].iloc[0], x1=df['date'].iloc[-1]+timedelta(days=1),
             line=dict(
                 color=color,
                 width=1,
@@ -117,11 +125,26 @@ if __name__ == '__main__':
         fig.update_layout(
             height=800,
             title=symbol,
-            xaxis_rangeslider_visible=False,
-            yaxis=dict(
-                side='right'
+            xaxis=dict(
+                rangeslider=dict(
+                    visible=False
+                ),
+                range=[df_display['date'].iloc[0], df_display['date'].iloc[-1]+timedelta(minutes=100)],
             ),
+            yaxis=dict(
+                side='right',
+                range=[df_display['low'].min()*0.99, df_display['high'].max()*1.01],
+
+            ),
+            dragmode='pan',
         )
+        if relayout_data:
+            layout = fig['layout']
+            if 'xaxis.range[0]' in relayout_data:
+                layout['xaxis']['range'] = [relayout_data['xaxis.range[0]'], relayout_data['xaxis.range[1]']]
+            if 'yaxis.range[0]' in relayout_data:
+                layout['yaxis']['range'] = [relayout_data['yaxis.range[0]'], relayout_data['yaxis.range[1]']]
+            fig['layout'] = layout
         return fig
 
     app.run_server(debug=True)
