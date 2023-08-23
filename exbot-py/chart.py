@@ -41,6 +41,8 @@ def get_chart(ex, symbol, timeframe, limit):
     df = df.tail(limit).reset_index(drop=True)
     chardata[symbol] = df
 
+chart_max_size = 2000
+chart_display_size = 200
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='exbot for python')
@@ -60,18 +62,19 @@ if __name__ == '__main__':
     ex = exchange.Exchange(config.exchange).get()
     ex.load_markets()
     print(ex.id())
-
     @app.callback(
         Output("graph", "figure"),
         Input("update", "n_intervals"),
         Input("symbol", "value"),
+        Input('graph', 'clickData'),
         State("graph", "relayoutData")
 
     )
-    def display_candlestick(n, symbol, relayout_data):
+    def display_candlestick(n, symbol, click_data, relayout_data):
         print(f"symbol: {symbol}")
+
         if symbol not in chardata:
-            get_chart(ex, symbol, args.timeframe, 2000)
+            get_chart(ex, symbol, args.timeframe, chart_max_size)
         df = chardata[symbol] 
         # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
         last_date = df.iloc[-1]['date']
@@ -94,7 +97,7 @@ if __name__ == '__main__':
             df.iloc[-2] = last_candle
 
         # 限制初始显示的数据范围为最后200条
-        df_display = df.tail(200)
+        df_display = df.tail(chart_display_size)
         print(df_display)
         # 画蜡烛图
         fig_candle =  go.Figure(data=[go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
@@ -111,17 +114,19 @@ if __name__ == '__main__':
             ),
         )
         # 添加MACD指标
-        close_prices = df_display['close'].values  # 获取收盘价的数据
+        close_prices = df['close'].values  # 获取收盘价的数据
         # 计算MACD指标
         # 设置参数
         fast_period = 12
         slow_period = 26
         signal_period = 9
         macd, signal, hist = talib.MACD(close_prices, fast_period, slow_period, signal_period)
+        macd_y_min = min(hist[-chart_display_size:].min(), macd[-chart_display_size:].min(), signal[-chart_display_size:].min())
+        macd_y_max = max(hist[-chart_display_size:].max(), macd[-chart_display_size:].max(), signal[-chart_display_size:].max())
         # 画MACD指标
-        fig_macd = go.Figure(layout=dict(title='My Plot'))
+        fig_macd = go.Figure()
         fig_macd.add_trace(go.Scatter(
-            x=df_display['date'],
+            x=df['date'],
             y=macd,
             name='DIF',
             mode='lines',
@@ -129,7 +134,7 @@ if __name__ == '__main__':
             yaxis='y2',
         ))
         fig_macd.add_trace(go.Scatter(
-            x=df_display['date'],
+            x=df['date'],
             y=signal,
             name='DEA',
             mode='lines',
@@ -137,14 +142,13 @@ if __name__ == '__main__':
             yaxis='y2',
         ))
         fig_macd.add_trace(go.Bar(
-            x=df_display['date'],
+            x=df['date'],
             y=hist,
             name='MACD',
             marker=dict(color='grey'),
             yaxis='y2',
         ))
-
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.01, row_heights=[0.7, 0.3])
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.005, row_heights=[0.7, 0.3])
         fig.add_trace(fig_candle.data[0], row=1, col=1)
         fig.add_shape(fig_candle.layout.shapes[0], row=1, col=1)
         fig.add_trace(fig_macd.data[0], row=2, col=1)
@@ -165,6 +169,25 @@ if __name__ == '__main__':
             borderwidth=1,
         )
 
+        # 跟踪鼠标点击位置
+        if click_data is not None:
+            if 'x' in click_data['points'][0]:
+                x = click_data['points'][0]['x']
+                xdate = pd.to_datetime(x).tz_localize('Asia/Shanghai').strftime('%Y-%m-%d %H:%M:%S%z')
+                shape = dict(
+                    type='line',
+                    x0=xdate, y0=min(macd_y_min, df_display['low'].min())*0.8,
+                    x1=xdate, y1=max(macd_y_max, df_display['high'].max())*1.2,
+                    line=dict(
+                        color='darkgrey',
+                        width=1,
+                        dash='dash',
+                    )
+                )
+                fig.add_shape(shape, row=1, col=1)
+                fig.add_shape(shape, row=2, col=1)
+
+
         fig.update_layout(
             height=800,
             title=symbol,
@@ -182,7 +205,7 @@ if __name__ == '__main__':
             yaxis2=dict(
                 title='MACD',
                 side='right',
-                range=[min(hist.min(), macd.min(), signal.min()), max(hist.max(), macd.max(), signal.max())],
+                range=[macd_y_min, macd_y_max],
             ),
             dragmode='pan',
         )
@@ -197,6 +220,7 @@ if __name__ == '__main__':
             if 'yaxis2.range[0]' in relayout_data:
                 layout['yaxis2']['range'] = [relayout_data['yaxis2.range[0]'], relayout_data['yaxis2.range[1]']]
             fig['layout'] = layout
+
         return fig
 
     app.run_server(debug=True)
