@@ -8,6 +8,9 @@ from exchanges import exchange
 from download import download_candles
 import plotly.graph_objects as go
 from dash import Dash, State, dcc, html, Input, Output
+import talib
+from plotly.subplots import make_subplots
+
 
 app = Dash(__name__)
 
@@ -93,11 +96,11 @@ if __name__ == '__main__':
         # 限制初始显示的数据范围为最后200条
         df_display = df.tail(200)
         print(df_display)
-
-        fig =  go.Figure(data=[go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
+        # 画蜡烛图
+        fig_candle =  go.Figure(data=[go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
         current_price = df['close'].iloc[-1]
         color = 'green' if current_price >= df['close'].iloc[-2] else 'red';
-        fig.add_shape(
+        fig_candle.add_shape(
             type='line',
             y0=current_price, y1=current_price,
             x0=df['date'].iloc[0], x1=df['date'].iloc[-1]+timedelta(days=1),
@@ -107,6 +110,46 @@ if __name__ == '__main__':
                 dash='dash',
             ),
         )
+        # 添加MACD指标
+        close_prices = df_display['close'].values  # 获取收盘价的数据
+        # 计算MACD指标
+        # 设置参数
+        fast_period = 12
+        slow_period = 26
+        signal_period = 9
+        macd, signal, hist = talib.MACD(close_prices, fast_period, slow_period, signal_period)
+        # 画MACD指标
+        fig_macd = go.Figure(layout=dict(title='My Plot'))
+        fig_macd.add_trace(go.Scatter(
+            x=df_display['date'],
+            y=macd,
+            name='DIF',
+            mode='lines',
+            line=dict(color='orange', width=1),
+            yaxis='y2',
+        ))
+        fig_macd.add_trace(go.Scatter(
+            x=df_display['date'],
+            y=signal,
+            name='DEA',
+            mode='lines',
+            line=dict(color='blue', width=1),
+            yaxis='y2',
+        ))
+        fig_macd.add_trace(go.Bar(
+            x=df_display['date'],
+            y=hist,
+            name='MACD',
+            marker=dict(color='grey'),
+            yaxis='y2',
+        ))
+
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.01, row_heights=[0.7, 0.3])
+        fig.add_trace(fig_candle.data[0], row=1, col=1)
+        fig.add_shape(fig_candle.layout.shapes[0], row=1, col=1)
+        fig.add_trace(fig_macd.data[0], row=2, col=1)
+        fig.add_trace(fig_macd.data[1], row=2, col=1)
+        fig.add_trace(fig_macd.data[2], row=2, col=1)
         # 在Y轴上显示当前价格
         fig.add_annotation(
             xref='paper', yref='y',
@@ -136,14 +179,23 @@ if __name__ == '__main__':
                 range=[df_display['low'].min()*0.99, df_display['high'].max()*1.01],
 
             ),
+            yaxis2=dict(
+                title='MACD',
+                side='right',
+                range=[min(hist.min(), macd.min(), signal.min()), max(hist.max(), macd.max(), signal.max())],
+            ),
             dragmode='pan',
         )
         if relayout_data:
             layout = fig['layout']
             if 'xaxis.range[0]' in relayout_data:
                 layout['xaxis']['range'] = [relayout_data['xaxis.range[0]'], relayout_data['xaxis.range[1]']]
+            if 'xaxis2.range[0]' in relayout_data:
+                layout['xaxis2']['range'] = [relayout_data['xaxis2.range[0]'], relayout_data['xaxis2.range[1]']]
             if 'yaxis.range[0]' in relayout_data:
                 layout['yaxis']['range'] = [relayout_data['yaxis.range[0]'], relayout_data['yaxis.range[1]']]
+            if 'yaxis2.range[0]' in relayout_data:
+                layout['yaxis2']['range'] = [relayout_data['yaxis2.range[0]'], relayout_data['yaxis2.range[1]']]
             fig['layout'] = layout
         return fig
 
