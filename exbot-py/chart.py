@@ -129,9 +129,28 @@ def draw_fig_with_click_data(fig, click_data, df, macd_yaxis_range):
                 x0=xdate, y0=min(macd_yaxis_range['range'][0], df['low'].min())*0.8,
                 x1=xdate, y1=max(macd_yaxis_range['range'][1], df['high'].max())*1.2,
                 line=dict(
-                    color='darkgrey',
+                    color='black',
                     width=1,
                     dash='dash',
+                )
+            )
+            fig.add_shape(shape, row=1, col=1)
+            fig.add_shape(shape, row=2, col=1)
+
+# 绘制鼠标悬停的垂直线
+def draw_fig_with_hover_data(fig, hover_data, df, macd_yaxis_range):
+    if hover_data is not None:
+        if 'x' in hover_data['points'][0]:
+            x = hover_data['points'][0]['x']
+            xdate = pd.to_datetime(x).tz_localize('Asia/Shanghai').strftime('%Y-%m-%d %H:%M:%S%z')
+            shape = dict(
+                type='line',
+                x0=xdate, y0=min(macd_yaxis_range['range'][0], df['low'].min())*0.8,
+                x1=xdate, y1=max(macd_yaxis_range['range'][1], df['high'].max())*1.2,
+                line=dict(
+                    color='darkgrey',
+                    width=1,
+                    dash='dot',
                 )
             )
             fig.add_shape(shape, row=1, col=1)
@@ -203,11 +222,13 @@ if __name__ == '__main__':
         Input("update", "n_intervals"),
         Input("symbol", "value"),
         Input('graph', 'clickData'),
+        Input('graph', 'hoverData'),
         State("graph", "relayoutData")
 
     )
-    def update_graph(_n, symbol, click_data, relayout_data):
+    def update_graph(_n, symbol, click_data, hover_data,relayout_data):
         print(f"symbol: {symbol}")
+        print(f"hover_data: {hover_data}")
         # 获取图表实时数据
         df = get_charting(symbol, args.timeframe)
         # 限制初始显示的数据
@@ -225,8 +246,9 @@ if __name__ == '__main__':
         fig.add_trace(fig_macd.data[0], row=2, col=1)
         fig.add_trace(fig_macd.data[1], row=2, col=1)
         fig.add_trace(fig_macd.data[2], row=2, col=1)
-        # 绘制鼠标点击的垂直线
+        # 绘制鼠标位置垂直线
         draw_fig_with_click_data(fig, click_data, df_display, macd_yaxis_range)
+        draw_fig_with_hover_data(fig, hover_data, df_display, macd_yaxis_range)
 
         fig.update_layout(
             height=800,
