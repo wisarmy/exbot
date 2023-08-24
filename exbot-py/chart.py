@@ -78,7 +78,52 @@ def draw_fig_candle(df):
         bordercolor=color,
         borderwidth=1,
     )
+    for index, row in df.iterrows():
+        price = row['buy_price']
+        date = row['date']
+        if price is not None:
+            xdate = date.strftime('%Y-%m-%d %H:%M:%S%z')
+            # fig 在买入点的价格位置添加一个向上的三角符号
+            fig.add_annotation(
+                dict(
+                    x=xdate,
+                    y=price,
+                    text="▲",
+                    showarrow=False,
+                    font=dict(
+                        family="Courier New, monospace",
+                        size=11,
+                        color="#ffffff"
+                    ),
+                    align="center",
+                    arrowcolor="LightSeaGreen",
+                    arrowsize=1,
+                    arrowwidth=1,
+                    bgcolor="LightSeaGreen",
+                    opacity=0.8
+                )
+            )
 
+        # fig add 上涨信号shape
+        # fig.add_shape(
+            # dict(
+                # type="rect",
+                # xref="x",
+                # yref="y",
+                # x0=df_display['date'].iloc[0],
+                # y0=df_display['low'].min()*0.99,
+                # x1=df_display['date'].iloc[-1]+timedelta(minutes=100),
+                # y1=df_display['high'].max()*1.01,
+                # line=dict(
+                    # color="LightSeaGreen",
+                    # width=1,
+                # ),
+                # fillcolor="LightSeaGreen",
+                # opacity=0.5,
+                # layer="below",
+                # line_width=0,
+            # )
+        # )
     return fig
 # 绘制MACD指标
 def draw_fig_macd(df):
@@ -191,11 +236,11 @@ def get_charting(symbol, timeframe):
             last_candle[0] = pd.Timestamp(last_candle[0], unit='ms', tz='Asia/Shanghai')
             
             if last_date == current_candle[0]:
-                df.iloc[-1] = current_candle
+                df.iloc[-1] = dict(zip(df.columns, current_candle))
             elif last_date < current_candle[0]: 
-                df.loc[len(df)] = current_candle
+                df.loc[len(df)] = dict(zip(df.columns, current_candle))
                 # 添加新的蜡烛图后，需要把上一根蜡烛图的数据修复
-                df.iloc[-2] = last_candle
+                df.iloc[-2] = dict(zip(df.columns, last_candle))
         return df
 
 
@@ -231,20 +276,31 @@ if __name__ == '__main__':
         # 获取图表实时数据
         df = get_charting(symbol, args.timeframe)
         # 限制初始显示的数据
+
+        df['buy_price'] = None
+        df['sell_price'] = None
+
         df_display = df.tail(chart_display_size)
         print(df_display)
-        # 绘制蜡烛图
-        fig_candle = draw_fig_candle(df)
-        # 绘制MACD指标
-        fig_macd, macd_yaxis_range = draw_fig_macd(df)
         # 组合图表
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.005, row_heights=[0.7, 0.3])
-        fig.add_trace(fig_candle.data[0], row=1, col=1)
-        fig.add_shape(fig_candle.layout.shapes[0], row=1, col=1)
-        fig.add_annotation(fig_candle.layout.annotations[0])
-        fig.add_trace(fig_macd.data[0], row=2, col=1)
-        fig.add_trace(fig_macd.data[1], row=2, col=1)
-        fig.add_trace(fig_macd.data[2], row=2, col=1)
+        # 绘制蜡烛图
+        fig_candle = draw_fig_candle(df)
+        try:
+            fig.add_trace(fig_candle.data[0], row=1, col=1)
+            fig.add_shape(fig_candle.layout.shapes[0], row=1, col=1)
+            fig.add_annotation(fig_candle.layout.annotations[0])
+            fig.add_annotation(fig_candle.layout.annotations[1])
+        except IndexError:
+            pass
+        # 绘制MACD指标
+        fig_macd, macd_yaxis_range = draw_fig_macd(df)
+        try:
+            fig.add_trace(fig_macd.data[0], row=2, col=1)
+            fig.add_trace(fig_macd.data[1], row=2, col=1)
+            fig.add_trace(fig_macd.data[2], row=2, col=1)
+        except IndexError:
+            pass
         # 绘制鼠标位置垂直线
         draw_fig_with_click_data(fig, click_data, df_display, macd_yaxis_range)
         draw_fig_with_hover_data(fig, hover_data, df_display, macd_yaxis_range)
