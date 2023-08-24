@@ -228,7 +228,6 @@ if __name__ == '__main__':
     )
     def update_graph(_n, symbol, click_data, hover_data,relayout_data):
         print(f"symbol: {symbol}")
-        print(f"hover_data: {hover_data}")
         # 获取图表实时数据
         df = get_charting(symbol, args.timeframe)
         # 限制初始显示的数据
