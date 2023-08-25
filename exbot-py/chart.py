@@ -351,7 +351,7 @@ if __name__ == '__main__':
         for shape in fig_candle.layout.shapes:
             fig.add_shape(shape, row=1, col=1)
         for annotation in fig_candle.layout.annotations:
-            fig.add_annotation(annotation, row=1, col=1)
+            fig.add_annotation(annotation)
         # 绘制MACD指标
         fig_macd, macd_yaxis_range = draw_fig_macd(df)
         try:
