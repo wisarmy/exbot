@@ -69,70 +69,7 @@ class macd():
 
         conditions = []
 
-        # Trending market
-        if self.buy_params['buy_trend_above_senkou_level'] >= 1:
-            conditions.append(dataframe['trend_close_5m'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_5m'] > dataframe['senkou_b'])
-
-        if self.buy_params['buy_trend_above_senkou_level'] >= 2:
-            conditions.append(dataframe['trend_close_15m'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_15m'] > dataframe['senkou_b'])
-
-        if self.buy_params['buy_trend_above_senkou_level'] >= 3:
-            conditions.append(dataframe['trend_close_30m'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_30m'] > dataframe['senkou_b'])
-
-        if self.buy_params['buy_trend_above_senkou_level'] >= 4:
-            conditions.append(dataframe['trend_close_1h'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_1h'] > dataframe['senkou_b'])
-
-        if self.buy_params['buy_trend_above_senkou_level'] >= 5:
-            conditions.append(dataframe['trend_close_2h'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_2h'] > dataframe['senkou_b'])
-
-        if self.buy_params['buy_trend_above_senkou_level'] >= 6:
-            conditions.append(dataframe['trend_close_4h'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_4h'] > dataframe['senkou_b'])
-
-        if self.buy_params['buy_trend_above_senkou_level'] >= 7:
-            conditions.append(dataframe['trend_close_6h'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_6h'] > dataframe['senkou_b'])
-
-        if self.buy_params['buy_trend_above_senkou_level'] >= 8:
-            conditions.append(dataframe['trend_close_8h'] > dataframe['senkou_a'])
-            conditions.append(dataframe['trend_close_8h'] > dataframe['senkou_b'])
-
-        # Trends bullish
-        if self.buy_params['buy_trend_bullish_level'] >= 1:
-            conditions.append(dataframe['trend_close_5m'] > dataframe['trend_open_5m'])
-
-        if self.buy_params['buy_trend_bullish_level'] >= 2:
-            conditions.append(dataframe['trend_close_15m'] > dataframe['trend_open_15m'])
-
-        if self.buy_params['buy_trend_bullish_level'] >= 3:
-            conditions.append(dataframe['trend_close_30m'] > dataframe['trend_open_30m'])
-
-        if self.buy_params['buy_trend_bullish_level'] >= 4:
-            conditions.append(dataframe['trend_close_1h'] > dataframe['trend_open_1h'])
-
-        if self.buy_params['buy_trend_bullish_level'] >= 5:
-            conditions.append(dataframe['trend_close_2h'] > dataframe['trend_open_2h'])
-
-        if self.buy_params['buy_trend_bullish_level'] >= 6:
-            conditions.append(dataframe['trend_close_4h'] > dataframe['trend_open_4h'])
-
-        if self.buy_params['buy_trend_bullish_level'] >= 7:
-            conditions.append(dataframe['trend_close_6h'] > dataframe['trend_open_6h'])
-
-        if self.buy_params['buy_trend_bullish_level'] >= 8:
-            conditions.append(dataframe['trend_close_8h'] > dataframe['trend_open_8h'])
-
-        # Trends magnitude
-        conditions.append(dataframe['fan_magnitude_gain'] >= self.buy_params['buy_min_fan_magnitude_gain'])
-        conditions.append(dataframe['fan_magnitude'] > 1)
-
-        for x in range(self.buy_params['buy_fan_magnitude_shift_value']):
-            conditions.append(dataframe['fan_magnitude'].shift(x+1) < dataframe['fan_magnitude'])
+        conditions.append(dataframe['cross'] == 1)
 
         if conditions:
             dataframe.loc[
@@ -145,8 +82,7 @@ class macd():
     def populate_sell_trend(self, dataframe: DataFrame) -> DataFrame:
 
         conditions = []
-
-        conditions.append(qtpylib.crossed_below(dataframe['trend_close_5m'], dataframe[self.sell_params['sell_trend_indicator']]))
+        conditions.append(dataframe['cross'] == -1)
 
         if conditions:
             dataframe.loc[

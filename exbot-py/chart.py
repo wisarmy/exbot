@@ -282,6 +282,9 @@ def get_charting(symbol, timeframe):
                 df.loc[df_last.index[-2]] = dict(zip(df.columns, df_last.iloc[-2]))
         return df
 
+def draw_fig_emas(fig, df, emas=[9, 22]):
+    for ema in emas:
+        fig.add_trace(go.Scatter(x=df.index, y=df['close'].ewm(span=ema, adjust=False).mean(), mode='lines', name='EMA'+str(ema)))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='exbot for python')
@@ -331,6 +334,9 @@ if __name__ == '__main__':
                 dfs[timeframe] = df
 
         df_display = df.tail(chart_display_size)
+        df_display = s.populate_buy_trend(df_display)
+        df_display = s.populate_sell_trend(df_display)
+
         print(df_display)
 
         # 组合图表
@@ -361,6 +367,8 @@ if __name__ == '__main__':
         # 绘制鼠标位置垂直线
         draw_fig_with_click_data(fig, click_data, df_display, macd_yaxis_range)
         # draw_fig_with_hover_data(fig, hover_data, df_display, macd_yaxis_range)
+        # 绘制 EMA
+        draw_fig_emas(fig, df, [9, 22])
 
         fig.update_layout(
             height=860,
