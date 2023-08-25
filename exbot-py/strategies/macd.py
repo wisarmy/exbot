@@ -57,14 +57,10 @@ class macd():
         dataframe['dif'] = np.around(macd, decimals=6)
         dataframe['dea'] = np.around(signal, decimals=6)
         dataframe['macd'] = np.around(hist, decimals=6)
-        # 金叉
+        # golden cross
         dataframe['cross'] = np.where((dataframe['dif'] > dataframe['dea']) & (dataframe['dif'].shift(1) < dataframe['dea'].shift(1)), 1, 0)
-        # 死叉
+        # dead cross
         dataframe['cross'] = np.where((dataframe['dif'] < dataframe['dea']) & (dataframe['dif'].shift(1) > dataframe['dea'].shift(1)), -1, dataframe['cross'])
-        # cross dif value
-        dataframe['cross_dif'] = np.where((dataframe['cross'] == 1), dataframe['dif'], 0)
-        dataframe['cross_dif'] = np.where((dataframe['cross'] == -1), dataframe['dif'], dataframe['cross_dif'])
-
 
         return dataframe
 

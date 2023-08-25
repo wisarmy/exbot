@@ -47,20 +47,21 @@ def get_chart(ex, symbol, timeframe, limit):
     df = pd.DataFrame(ohlcv, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
     df['date'] = pd.to_datetime(df['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
     # get last some rows
-    df = df.tail(limit).reset_index(drop=True)
+    df.set_index('date', inplace=True)
+    df = df.tail(limit)
     if chartdata.get(symbol) is None:
         chartdata[symbol] = {}
     chartdata[symbol][timeframe] = df
 
 # 绘制蜡烛图
 def draw_fig_candle(df):
-    fig =  go.Figure(data=[go.Candlestick(x=df['date'], open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
+    fig =  go.Figure(data=[go.Candlestick(x=df.index, open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
     current_price = df['close'].iloc[-1]
     color = 'green' if current_price >= df['close'].iloc[-2] else 'red';
     fig.add_shape(
         type='line',
         y0=current_price, y1=current_price,
-        x0=df['date'].iloc[0], x1=df['date'].iloc[-1]+timedelta(days=1),
+        x0=df.index[0], x1=df.index[-1]+timedelta(days=1),
         line=dict(
             color=color,
             width=1,
@@ -139,8 +140,9 @@ def draw_fig_cross_bg(fig, df, yaxis_range):
                 cross_bg['color'] = 'rgba(0, 255, 0, 0.2)' if row['cross'] == 1 else 'rgba(255, 0, 0, 0.2)'
     # 最后一个cross_bg
     if cross_bg['start'] != 0:
-        cross_bg['end'] = len(df) - 1
+        cross_bg['end'] = df.index[-1]
         cross_bgs.append(cross_bg.copy())
+
 
     for cross_bg in cross_bgs:
         fig.add_shape(
@@ -148,9 +150,9 @@ def draw_fig_cross_bg(fig, df, yaxis_range):
                 type="rect",
                 xref="x",
                 yref="y",
-                x0=df['date'].iloc[cross_bg['start']],
+                x0=cross_bg['start'],
                 y0=yaxis_range[0],
-                x1=df['date'].iloc[cross_bg['end']],
+                x1=cross_bg['end'],
                 y1=yaxis_range[1],
                 line=dict(
                     color=cross_bg['color'],
@@ -178,7 +180,7 @@ def draw_fig_macd(df):
         # 画MACD指标
         fig = go.Figure()
         fig.add_trace(go.Scatter(
-            x=df['date'],
+            x=df.index,
             y=macd,
             name='DIF',
             mode='lines',
@@ -186,7 +188,7 @@ def draw_fig_macd(df):
             yaxis='y2',
         ))
         fig.add_trace(go.Scatter(
-            x=df['date'],
+            x=df.index,
             y=signal,
             name='DEA',
             mode='lines',
@@ -194,7 +196,7 @@ def draw_fig_macd(df):
             yaxis='y2',
         ))
         fig.add_trace(go.Bar(
-            x=df['date'],
+            x=df.index,
             y=hist,
             name='MACD',
             marker=dict(color='grey'),
@@ -258,7 +260,8 @@ def get_charting(symbol, timeframe):
             get_chart(ex, symbol, timeframe, chart_max_size)
         df = chartdata[symbol][timeframe] 
         # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
-        last_date = df.iloc[-1]['date']
+        last_date = df.index[-1]
+
         # 只获取最新的蜡烛图，会导致最终的蜡烛图没更新到最新就切换到下一个蜡烛图了，造成数据不准确
         # 所以获取最后两根蜡烛图去修复上一根蜡烛图的数据
         global graph_update_timestamp
@@ -267,19 +270,16 @@ def get_charting(symbol, timeframe):
             graph_update_timestamp = current_timestamp
             logging.debug(f"update candles: {symbol}, {graph_update_timestamp}")
             last_candles: list = ex.get_candles(symbol, timeframe, None, 2)
-            #print(last_candles)
-            current_candle: list = last_candles[-1]
-            last_candle: list = last_candles[-2]
+            df_last = pd.DataFrame(last_candles, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
+            df_last['date'] = pd.to_datetime(df_last['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
+            df_last.set_index('date', inplace=True)
 
-            current_candle[0] = pd.Timestamp(current_candle[0], unit='ms', tz='Asia/Shanghai')
-            last_candle[0] = pd.Timestamp(last_candle[0], unit='ms', tz='Asia/Shanghai')
-            
-            if last_date == current_candle[0]:
-                df.iloc[-1] = dict(zip(df.columns, current_candle))
-            elif last_date < current_candle[0]: 
-                df.loc[len(df)] = dict(zip(df.columns, current_candle))
+            if last_date == df_last.index[-1]:
+                df.loc[last_date] = dict(zip(df.columns, df_last.iloc[-1]))
+            elif last_date < df_last.index[-1]: 
+                df.loc[df_last.index[-1]] = dict(zip(df.columns, df_last.iloc[-1]))
                 # 添加新的蜡烛图后，需要把上一根蜡烛图的数据修复
-                df.iloc[-2] = dict(zip(df.columns, last_candle))
+                df.loc[df_last.index[-2]] = dict(zip(df.columns, df_last.iloc[-2]))
         return df
 
 
@@ -330,8 +330,6 @@ if __name__ == '__main__':
             else:
                 dfs[timeframe] = df
 
-
-
         df_display = df.tail(chart_display_size)
         print(df_display)
 
@@ -371,7 +369,7 @@ if __name__ == '__main__':
                 rangeslider=dict(
                     visible=False
                 ),
-                range=[df_display['date'].iloc[0], df_display['date'].iloc[-1]+timedelta(minutes=60)],
+                range=[df_display.index[0], df_display.index[-1]+timedelta(minutes=60)],
             ),
             yaxis=dict(
                 side='right',
