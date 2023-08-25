@@ -11,11 +11,13 @@ import plotly.graph_objects as go
 from dash import Dash, State, dcc, html, Input, Output
 import talib
 from plotly.subplots import make_subplots
+from strategies import macd as s_macd
 
 
+pd.set_option('display.max_rows', 100)
 # candle data
 chardata = {}
-chart_max_size = 2000
+chart_max_size = 1000
 chart_display_size = 200
 # 图表更新间隔（s）
 graph_update_interval = 5
@@ -36,7 +38,6 @@ app.layout = html.Div([
     ),
 ])
 
-pd.set_option('display.max_rows', 10)
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
 
@@ -78,52 +79,76 @@ def draw_fig_candle(df):
         bordercolor=color,
         borderwidth=1,
     )
-    for index, row in df.iterrows():
-        price = row['buy_price']
-        date = row['date']
-        if price is not None:
-            xdate = date.strftime('%Y-%m-%d %H:%M:%S%z')
-            # fig 在买入点的价格位置添加一个向上的三角符号
-            fig.add_annotation(
-                dict(
-                    x=xdate,
-                    y=price,
-                    text="▲",
-                    showarrow=False,
-                    font=dict(
-                        family="Courier New, monospace",
-                        size=11,
-                        color="#ffffff"
-                    ),
-                    align="center",
-                    arrowcolor="LightSeaGreen",
-                    arrowsize=1,
-                    arrowwidth=1,
-                    bgcolor="LightSeaGreen",
-                    opacity=0.8
-                )
+    cross_bgs = []
+    cross_bg_default = dict(
+            start=0,
+            end=0,
+            color='',
             )
-
-        # fig add 上涨信号shape
-        # fig.add_shape(
-            # dict(
-                # type="rect",
-                # xref="x",
-                # yref="y",
-                # x0=df_display['date'].iloc[0],
-                # y0=df_display['low'].min()*0.99,
-                # x1=df_display['date'].iloc[-1]+timedelta(minutes=100),
-                # y1=df_display['high'].max()*1.01,
-                # line=dict(
-                    # color="LightSeaGreen",
-                    # width=1,
-                # ),
-                # fillcolor="LightSeaGreen",
-                # opacity=0.5,
-                # layer="below",
-                # line_width=0,
+    cross_bg = cross_bg_default
+    for index, row in df.iterrows():
+        # if 'buy_price' not in row:
+            # continue
+        # price = row['buy_price']
+        # date = row['date']
+        # if price is not None:
+            # xdate = date.strftime('%Y-%m-%d %H:%M:%S%z')
+            # # fig 在买入点的价格位置添加一个向上的三角符号
+            # fig.add_annotation(
+                # dict(
+                    # x=xdate,
+                    # y=price,
+                    # text="▲",
+                    # showarrow=False,
+                    # font=dict(
+                        # family="Courier New, monospace",
+                        # size=11,
+                        # color="#ffffff"
+                    # ),
+                    # align="center",
+                    # arrowcolor="LightSeaGreen",
+                    # arrowsize=1,
+                    # arrowwidth=1,
+                    # bgcolor="LightSeaGreen",
+                    # opacity=0.8
+                # )
             # )
-        # )
+
+        if row['cross'] != 0:
+            if cross_bg['start'] == 0:
+                cross_bg['start'] = index
+                cross_bg['color'] = 'rgba(0, 255, 0, 0.2)' if row['cross'] == 1 else 'rgba(255, 0, 0, 0.2)'
+            else :
+                cross_bg['end'] = index
+                cross_bgs.append(cross_bg.copy())
+                cross_bg = cross_bg_default
+                cross_bg['start'] = index
+                cross_bg['color'] = 'rgba(0, 255, 0, 0.2)' if row['cross'] == 1 else 'rgba(255, 0, 0, 0.2)'
+    # 最后一个cross_bg
+    if cross_bg['start'] != 0:
+        cross_bg['end'] = len(df) - 1
+        cross_bgs.append(cross_bg.copy())
+
+    for cross_bg in cross_bgs:
+        fig.add_shape(
+            dict(
+                type="rect",
+                xref="x",
+                yref="y",
+                x0=df['date'].iloc[cross_bg['start']],
+                y0=df['low'].min()*0.99,
+                x1=df['date'].iloc[cross_bg['end']],
+                y1=df['high'].max()*1.01,
+                line=dict(
+                    color=cross_bg['color'],
+                    width=1,
+                ),
+                fillcolor=cross_bg['color'],
+                opacity=0.5,
+                layer="below",
+                line_width=0,
+            )
+        )
     return fig
 # 绘制MACD指标
 def draw_fig_macd(df):
@@ -277,22 +302,26 @@ if __name__ == '__main__':
         df = get_charting(symbol, args.timeframe)
         # 限制初始显示的数据
 
-        df['buy_price'] = None
-        df['sell_price'] = None
+        # df['buy_price'] = None
+        # df['sell_price'] = None
+        s = s_macd.macd()
+        df = s.populate_indicators(df)
 
         df_display = df.tail(chart_display_size)
         print(df_display)
+
+        
+
+
         # 组合图表
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.005, row_heights=[0.7, 0.3])
         # 绘制蜡烛图
         fig_candle = draw_fig_candle(df)
-        try:
-            fig.add_trace(fig_candle.data[0], row=1, col=1)
-            fig.add_shape(fig_candle.layout.shapes[0], row=1, col=1)
-            fig.add_annotation(fig_candle.layout.annotations[0])
-            fig.add_annotation(fig_candle.layout.annotations[1])
-        except IndexError:
-            pass
+        fig.add_trace(fig_candle.data[0], row=1, col=1)
+        for shape in fig_candle.layout.shapes:
+            fig.add_shape(shape, row=1, col=1)
+        for annotation in fig_candle.layout.annotations:
+            fig.add_annotation(annotation, row=1, col=1)
         # 绘制MACD指标
         fig_macd, macd_yaxis_range = draw_fig_macd(df)
         try:
@@ -306,17 +335,17 @@ if __name__ == '__main__':
         draw_fig_with_hover_data(fig, hover_data, df_display, macd_yaxis_range)
 
         fig.update_layout(
-            height=800,
+            height=860,
             title=symbol,
             xaxis=dict(
                 rangeslider=dict(
                     visible=False
                 ),
-                range=[df_display['date'].iloc[0], df_display['date'].iloc[-1]+timedelta(minutes=100)],
+                range=[df_display['date'].iloc[0], df_display['date'].iloc[-1]+timedelta(minutes=60)],
             ),
             yaxis=dict(
                 side='right',
-                range=[df_display['low'].min()*0.99, df_display['high'].max()*1.01],
+                range=[df_display['low'].min()*0.999, df_display['high'].max()*1.001],
 
             ),
             yaxis2=dict(
