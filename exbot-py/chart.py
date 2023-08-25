@@ -16,11 +16,11 @@ from strategies import macd as s_macd
 
 pd.set_option('display.max_rows', 100)
 # candle data
-chardata = {}
-chart_max_size = 1000
+chartdata = {}
+chart_max_size = 500
 chart_display_size = 200
 # 图表更新间隔（s）
-graph_update_interval = 5
+graph_update_interval = 10
 # 图表最后更新时间 timestamp
 graph_update_timestamp = 0.0
 
@@ -48,7 +48,9 @@ def get_chart(ex, symbol, timeframe, limit):
     df['date'] = pd.to_datetime(df['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
     # get last some rows
     df = df.tail(limit).reset_index(drop=True)
-    chardata[symbol] = df
+    if chartdata.get(symbol) is None:
+        chartdata[symbol] = {}
+    chartdata[symbol][timeframe] = df
 
 # 绘制蜡烛图
 def draw_fig_candle(df):
@@ -87,8 +89,8 @@ def draw_fig_candle(df):
             )
     cross_bg = cross_bg_default
     for index, row in df.iterrows():
-        # if 'buy_price' not in row:
-            # continue
+        if 'buy_price' not in row:
+            continue
         # price = row['buy_price']
         # date = row['date']
         # if price is not None:
@@ -114,6 +116,17 @@ def draw_fig_candle(df):
                 # )
             # )
 
+    return fig
+def draw_fig_cross_bg(fig, df, yaxis_range):
+    # print(f'yaxis_range: {yaxis_range} {df["date"].iloc[0]} {df["date"].iloc[-1]}')
+    cross_bgs = []
+    cross_bg_default = dict(
+            start=0,
+            end=0,
+            color='',
+            )
+    cross_bg = cross_bg_default
+    for index, row in df.iterrows():
         if row['cross'] != 0:
             if cross_bg['start'] == 0:
                 cross_bg['start'] = index
@@ -136,9 +149,9 @@ def draw_fig_candle(df):
                 xref="x",
                 yref="y",
                 x0=df['date'].iloc[cross_bg['start']],
-                y0=df['low'].min()*0.99,
+                y0=yaxis_range[0],
                 x1=df['date'].iloc[cross_bg['end']],
-                y1=df['high'].max()*1.01,
+                y1=yaxis_range[1],
                 line=dict(
                     color=cross_bg['color'],
                     width=1,
@@ -150,6 +163,7 @@ def draw_fig_candle(df):
             )
         )
     return fig
+
 # 绘制MACD指标
 def draw_fig_macd(df):
         close_prices = df['close'].values  # 获取收盘价的数据
@@ -240,9 +254,9 @@ def fig_relayout(fig,relayout_data):
         fig['layout'] = layout
 
 def get_charting(symbol, timeframe):
-        if symbol not in chardata:
+        if symbol not in chartdata or timeframe not in chartdata[symbol]:
             get_chart(ex, symbol, timeframe, chart_max_size)
-        df = chardata[symbol] 
+        df = chartdata[symbol][timeframe] 
         # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
         last_date = df.iloc[-1]['date']
         # 只获取最新的蜡烛图，会导致最终的蜡烛图没更新到最新就切换到下一个蜡烛图了，造成数据不准确
@@ -292,11 +306,11 @@ if __name__ == '__main__':
         Input("update", "n_intervals"),
         Input("symbol", "value"),
         Input('graph', 'clickData'),
-        Input('graph', 'hoverData'),
+        # Input('graph', 'hoverData'),
         State("graph", "relayoutData")
 
     )
-    def update_graph(_n, symbol, click_data, hover_data,relayout_data):
+    def update_graph(_n, symbol, click_data, relayout_data):
         print(f"symbol: {symbol}")
         # 获取图表实时数据
         df = get_charting(symbol, args.timeframe)
@@ -306,17 +320,33 @@ if __name__ == '__main__':
         # df['sell_price'] = None
         s = s_macd.macd()
         df = s.populate_indicators(df)
+        # 获取多 timeframe 的数据
+        dfs = {}
+        timeframes = ['1m', '5m']
+        for timeframe in timeframes:
+            if args.timeframe != timeframe:
+                dfs[timeframe] = get_charting(symbol, timeframe)
+                dfs[timeframe] = s.populate_indicators(dfs[timeframe])
+            else:
+                dfs[timeframe] = df
+
+
 
         df_display = df.tail(chart_display_size)
         print(df_display)
-
-        
-
 
         # 组合图表
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.005, row_heights=[0.7, 0.3])
         # 绘制蜡烛图
         fig_candle = draw_fig_candle(df)
+        # 绘制交易信号
+        display_yaxis_max = df_display['high'].max()
+        display_yaxis_min = df_display['low'].min()
+        display_yaxis_span = display_yaxis_max - display_yaxis_min
+        for timeframe in reversed(timeframes):
+            fig_candle = draw_fig_cross_bg(fig_candle, dfs[timeframe], [display_yaxis_max-0.1*display_yaxis_span, display_yaxis_max])
+            display_yaxis_max = display_yaxis_max - 0.1*display_yaxis_span
+
         fig.add_trace(fig_candle.data[0], row=1, col=1)
         for shape in fig_candle.layout.shapes:
             fig.add_shape(shape, row=1, col=1)
@@ -332,7 +362,7 @@ if __name__ == '__main__':
             pass
         # 绘制鼠标位置垂直线
         draw_fig_with_click_data(fig, click_data, df_display, macd_yaxis_range)
-        draw_fig_with_hover_data(fig, hover_data, df_display, macd_yaxis_range)
+        # draw_fig_with_hover_data(fig, hover_data, df_display, macd_yaxis_range)
 
         fig.update_layout(
             height=860,
