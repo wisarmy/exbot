@@ -24,9 +24,9 @@ jobs:
       working-directory: ./exbot
     - name: Build
       run: |
-        mkdir exbot-app/dist
+        mkdir dist
         cargo build
-      working-directory: ./exbot
+      working-directory: ./exbot-app
     - name: Run tests
       run: cargo test --verbose
       working-directory: ./exbot
