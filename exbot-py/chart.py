@@ -1,5 +1,6 @@
 import argparse
 from datetime import timedelta
+import datetime
 import logging
 import time
 import pandas as pd
@@ -12,6 +13,7 @@ from dash import Dash, State, dcc, html, Input, Output
 import talib
 from plotly.subplots import make_subplots
 from strategies import macd as s_macd
+from strategies import strategy
 
 
 pd.set_option('display.max_rows', 100)
@@ -19,18 +21,19 @@ pd.set_option('display.max_rows', 100)
 chartdata = {}
 chart_max_size = 500
 chart_display_size = 200
-# 图表更新间隔（s）
-graph_update_interval = 10
-# 图表最后更新时间 timestamp
-graph_update_timestamp = 0.0
+# 数据更新间隔（s）
+data_update_interval = 10
+# 数据更新时间 timestamp
+data_updated = 0.0
+# 策略最后执行时间 timestamp
+strategy_last_timestamp = 0.0
 
 
 
 app = Dash(__name__)
 
 app.layout = html.Div([
-    dcc.Dropdown(['NEAR/USDT:USDT', 'BTC/USDT:USDT', 'ETH/USDT:USDT'], 'NEAR/USDT:USDT', id='symbol'),
-    dcc.Interval(id='update', interval=graph_update_interval*1000, n_intervals=0),
+    dcc.Interval(id='update', interval=data_update_interval*1000, n_intervals=0),
     dcc.Graph(id="graph",
         config={
             'scrollZoom': True,  # 启用或禁用滚动缩放
@@ -264,11 +267,11 @@ def get_charting(symbol, timeframe):
 
         # 只获取最新的蜡烛图，会导致最终的蜡烛图没更新到最新就切换到下一个蜡烛图了，造成数据不准确
         # 所以获取最后两根蜡烛图去修复上一根蜡烛图的数据
-        global graph_update_timestamp
+        global data_updated
         current_timestamp = time.time()
-        if round(current_timestamp - graph_update_timestamp) >= graph_update_interval:
-            graph_update_timestamp = current_timestamp
-            logging.debug(f"update candles: {symbol}, {graph_update_timestamp}")
+        if round(current_timestamp - data_updated) >= data_update_interval:
+            data_updated = current_timestamp
+            logging.debug(f"update candles: {symbol}, {data_updated}")
             last_candles: list = ex.get_candles(symbol, timeframe, None, 2)
             df_last = pd.DataFrame(last_candles, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
             df_last['date'] = pd.to_datetime(df_last['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
@@ -286,10 +289,46 @@ def draw_fig_emas(fig, df, emas=[9, 22]):
     for ema in emas:
         fig.add_trace(go.Scatter(x=df.index, y=df['close'].ewm(span=ema, adjust=False).mean(), mode='lines', name='EMA'+str(ema)))
 
+def with_strategy(s, df, args, fig=None):
+    global strategy_last_timestamp
+    if s == 'macd':
+        print(f"strategy: {args.strategy}")
+        s = s_macd.macd()
+        df= s.populate_indicators(df).tail(chart_max_size)
+        # 获取多 timeframe 的数据
+        dfs = {}
+        timeframes = ['1m', '5m']
+        for timeframe in timeframes:
+            if args.timeframe != timeframe:
+                dfs[timeframe] = get_charting(args.symbol, timeframe)
+                dfs[timeframe] = s.populate_indicators(dfs[timeframe])
+            else:
+                dfs[timeframe] = df
+
+        df = s.populate_buy_trend(df)
+        df = s.populate_sell_trend(df)
+        last_timestamp = pd.to_datetime(df.index[-1], unit='ms', utc=True).tz_convert('Asia/Shanghai').timestamp()
+        if last_timestamp > strategy_last_timestamp:
+            side = strategy.amount_limit(ex, df, args.symbol, args.amount, args.amount_max_limit)
+            if side is not None:
+                strategy_last_timestamp = last_timestamp
+        # 绘制交易信号
+        display_yaxis_max = df['high'].max()
+        display_yaxis_min = df['low'].min()
+        display_yaxis_span = display_yaxis_max - display_yaxis_min
+        for timeframe in reversed(timeframes):
+            fig = draw_fig_cross_bg(fig, dfs[timeframe], [display_yaxis_max-0.1*display_yaxis_span, display_yaxis_max])
+            display_yaxis_max = display_yaxis_max - 0.1*display_yaxis_span
+
+    return df.tail(chart_display_size)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='exbot for python')
     parser.add_argument('-c', '--config', type=str, required=True, help='config file path')
-    # parser.add_argument('--symbol', type=str, required=True, help='The trading symbol to use')
+    parser.add_argument('--symbol', type=str, required=True, help='The trading symbol to use')
+    parser.add_argument('--strategy', type=str, required=True, help='The strategy to use')
+    parser.add_argument('--amount', type=float, default=1, help='The symbol amount to trade')
+    parser.add_argument('--amount_max_limit', type=float, default=1, help='The symbol amount max limit to trade')
     parser.add_argument('-t', '--timeframe', type=str, required=True, help='timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M')
     # add arg verbose
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose mode')
@@ -307,51 +346,26 @@ if __name__ == '__main__':
     @app.callback(
         Output("graph", "figure"),
         Input("update", "n_intervals"),
-        Input("symbol", "value"),
         Input('graph', 'clickData'),
         # Input('graph', 'hoverData'),
         State("graph", "relayoutData")
 
     )
-    def update_graph(_n, symbol, click_data, relayout_data):
-        print(f"symbol: {symbol}")
+    def update_graph(n, click_data, relayout_data):
+        symbol = args.symbol
+        print(f"symbol: {symbol}, updated: {datetime.datetime.fromtimestamp(data_updated)}")
         # 获取图表实时数据
         df = get_charting(symbol, args.timeframe)
-        # 限制初始显示的数据
-
-        # df['buy_price'] = None
-        # df['sell_price'] = None
-        s = s_macd.macd()
-        df = s.populate_indicators(df)
-        # 获取多 timeframe 的数据
-        dfs = {}
-        timeframes = ['1m', '5m']
-        for timeframe in timeframes:
-            if args.timeframe != timeframe:
-                dfs[timeframe] = get_charting(symbol, timeframe)
-                dfs[timeframe] = s.populate_indicators(dfs[timeframe])
-            else:
-                dfs[timeframe] = df
-
-        df_display = df.tail(chart_display_size)
-        df_display = s.populate_buy_trend(df_display)
-        df_display = s.populate_sell_trend(df_display)
-
-        print(df_display)
-
         # 组合图表
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.005, row_heights=[0.7, 0.3])
         # 绘制蜡烛图
         fig_candle = draw_fig_candle(df)
-        # 绘制交易信号
-        display_yaxis_max = df_display['high'].max()
-        display_yaxis_min = df_display['low'].min()
-        display_yaxis_span = display_yaxis_max - display_yaxis_min
-        for timeframe in reversed(timeframes):
-            fig_candle = draw_fig_cross_bg(fig_candle, dfs[timeframe], [display_yaxis_max-0.1*display_yaxis_span, display_yaxis_max])
-            display_yaxis_max = display_yaxis_max - 0.1*display_yaxis_span
+        # 加载策略
+        df_display = with_strategy(args.strategy, df, args, fig_candle)
+        # print(df_display)
 
-        fig.add_trace(fig_candle.data[0], row=1, col=1)
+        for trace in fig_candle.data:
+            fig.add_trace(trace, row=1, col=1)
         for shape in fig_candle.layout.shapes:
             fig.add_shape(shape, row=1, col=1)
         for annotation in fig_candle.layout.annotations:

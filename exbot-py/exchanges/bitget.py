@@ -38,7 +38,7 @@ class BitgetExchange:
         open_orders = []
         try:
             orders = self.exchange.fetch_open_orders(symbol)
-            print(f"Raw orders: {json.dumps(orders, indent=4)}")
+            # print(f"Raw orders: {json.dumps(orders, indent=4)}")
             for order in orders:
                 if "info" in order:
                     info = order["info"]
@@ -57,6 +57,26 @@ class BitgetExchange:
 
     def create_order_limit(self, symbol: str, side: Literal['buy', 'sell'], amount: float, price: float, params: dict = {}):
         return self.exchange.create_order(symbol, 'limit', side, amount, price, params)
+    def create_order_market(self, symbol: str, side: Literal['buy', 'sell'], amount: float, params: dict = {}):
+        return self.exchange.create_order(symbol, 'market', side, amount, params)
+    def cancel_orders(self, symbol: str):
+        try:
+            get_open_orders = self.get_open_orders(symbol)
+            if len(get_open_orders) == 0:
+                print("No open orders to cancel.")
+                return
+            ids = []
+            for order in get_open_orders:
+                ids.append(order['id'])
+                # print(f"Canceling order: {order}")
+                # self.exchange.cancel_order(order['id'], symbol)
+            print(f"Canceling orders: {ids}")
+            self.exchange.cancel_orders(ids, symbol)
+        except Exception as e:
+            logging.warning(f"An unknown error occurred in cancel_orders(): {e}")
+    # 平仓
+    def close_position(self, symbol: str, side: Literal['buy', 'sell'], amount: float):
+        return self.exchange.create_market_order(symbol, side, amount, params={'reduceOnly': True})
 
     def get_current_candle(self, symbol: str, timeframe='1m', retries=3, delay=60):
         for _ in range(retries):
@@ -99,3 +119,51 @@ class BitgetExchange:
                 break
             since = ohlcv[-1][0]
         return candles
+
+    def fetch_position(self, symbol):
+        values = {
+            "long": {
+                "qty": 0.0,
+                "price": 0.0,
+                "realised": 0,
+                "cum_realised": 0,
+                "upnl": 0,
+                "upnl_pct": 0,
+                "liq_price": 0,
+                "entry_price": 0,
+            },
+            "short": {
+                "qty": 0.0,
+                "price": 0.0,
+                "realised": 0,
+                "cum_realised": 0,
+                "upnl": 0,
+                "upnl_pct": 0,
+                "liq_price": 0,
+                "entry_price": 0,
+            },
+        }
+        try:
+            data = self.exchange.fetch_position(symbol)
+            for position in data:
+                # 判断是否有持仓
+                if position["entryPrice"] is None:
+                    continue
+                side = position["side"]
+                values[side]["qty"] = float(position["contracts"])  # Use "contracts" instead of "contractSize"
+                values[side]["price"] = float(position["entryPrice"])
+                values[side]["realised"] = round(float(position["info"]["achievedProfits"]), 4)
+                values[side]["upnl"] = round(float(position["unrealizedPnl"]), 4)
+                if position["liquidationPrice"] is not None:
+                    values[side]["liq_price"] = float(position["liquidationPrice"])
+                else:
+                    print(f"Warning: liquidationPrice is None for {side} position")
+                    values[side]["liq_price"] = None
+                values[side]["entry_price"] = float(position["entryPrice"])
+        except Exception as e:
+            logging.info(f"An unknown error occurred in fetch_position: {e}")
+        return values
+
+
+
+
