@@ -36,7 +36,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 # 如果是盈利的，平仓
                 if position['long']['upnl'] > 0:
                     print(f"close long: {last['close']}, profit: {position['long']['upnl']}")
-                    ex.close_position(symbol, 'buy', position['long']['qty'])
+                    ex.close_position(symbol, 'sell', position['long']['qty'])
 
 
     elif side == 'sell':
@@ -57,5 +57,5 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 # 如果是盈利的，平仓
                 if position['short']['upnl'] > 0:
                     print(f"close short: {last['close']}, profit: {position['short']['upnl']}")
-                    ex.close_position(symbol, 'sell', position['short']['qty'])
+                    ex.close_position(symbol, 'buy', position['short']['qty'])
     return side
