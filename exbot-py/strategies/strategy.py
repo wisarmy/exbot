@@ -1,4 +1,3 @@
-import json
 from exchanges.bitget import BitgetExchange
 # 数量限制
 def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):

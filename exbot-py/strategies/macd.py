@@ -1,18 +1,9 @@
-# --- Do not remove these libs ---
-from freqtrade.strategy.interface import IStrategy
 from pandas import DataFrame
 import talib
-import talib.abstract as ta
-import freqtrade.vendor.qtpylib.indicators as qtpylib
 import pandas as pd  # noqa
 pd.options.mode.chained_assignment = None  # default='warn'
-import technical.indicators as ftt
 from functools import reduce
-from datetime import datetime, timedelta
-from freqtrade.strategy import merge_informative_pair
 import numpy as np
-from freqtrade.strategy import stoploss_from_open
-import json
 
 class macd():
 

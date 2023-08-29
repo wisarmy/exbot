@@ -1,22 +1,32 @@
 import argparse
+import datetime
 import logging
-import pandas as pd
+import time
 from config import load_config
-import numpy as np
-from download import download_candles
 
 from exchanges import exchange
-from strategies import ichiv1
-import mplfinance as mpf
+import chart
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
 
+def update(ex, args):
+    print(f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}")
+    # 获取图表实时数据
+    df = chart.get_charting(args.symbol, args.timeframe, ex)
+    df_display = chart.with_strategy(ex, args.strategy, df, args)
+    # print(df_display)
+    
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='exbot for python')
     parser.add_argument('-c', '--config', type=str, required=True, help='config file path')
     parser.add_argument('--symbol', type=str, required=True, help='The trading symbol to use')
+    parser.add_argument('--strategy', type=str, default='', help='The strategy to use')
+    parser.add_argument('--amount', type=float, default=1, help='The symbol amount to trade')
+    parser.add_argument('--amount_max_limit', type=float, default=1, help='The symbol amount max limit to trade')
     parser.add_argument('-t', '--timeframe', type=str, required=True, help='timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M')
+    # add arg interval
+    parser.add_argument('-i', '--interval', type=int, default=10, help='data update interval seconds < timeframes interval')
     # add arg verbose
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose mode')
     args = parser.parse_args()
@@ -24,43 +34,16 @@ if __name__ == '__main__':
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    logging.info('exbot start')
-
-    logging.info(args.config)
+    logging.info('exbot starting ...')
 
     config = load_config(args.config)
-
     ex = exchange.Exchange(config.exchange).get()
     ex.load_markets()
+    print(f"{ex.id()}, strategy: {args.strategy}")
 
-    print(args)
-    print(ex.id())
-    print(ex.get_balance('USDT'))
-    ohlcv = download_candles(ex, args.symbol, args.timeframe)
-    df = pd.DataFrame(ohlcv, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
-    df['date'] = pd.to_datetime(df['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
-    s = ichiv1.ichiv1()
-    print(df)
-    df = s.populate_indicators(df)
-    print(df)
-    df = s.populate_buy_trend(df)
-    print(df)
-    df = s.populate_sell_trend(df)
-    print(df)
-    # df.to_csv('test.csv')
-
-    df.set_index('date', inplace=True)
-    # df = df.sort_index(ascending=True)
-    apds = []
-    buy_points = np.where(df['buy'] == 1.0, df['close'], np.nan)
-    sell_points = np.where(df['sell'] == 1.0, df['close'], np.nan)
-    print(buy_points)
-    print(sell_points)
-
-    if np.count_nonzero(~np.isnan(buy_points)) > 0:
-        apds.append(mpf.make_addplot(buy_points, type='scatter', markersize=200, marker='^', color='r'))
-    if np.count_nonzero(~np.isnan(sell_points)) > 0:
-        apds.append(mpf.make_addplot(sell_points, type='scatter', markersize=200, marker='v', color='g'))
-
-    mpf.plot(df, addplot=apds, type='candle', mav=(3,6,9), volume=True, style='yahoo', title=args.symbol)
-    
+    while True:
+        try:
+            update(ex, args)
+        except Exception as e:
+            logging.warning(f"An unknown error occurred in update(): {e}")
+        time.sleep(args.interval)

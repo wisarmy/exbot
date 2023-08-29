@@ -27,21 +27,6 @@ data_update_interval = 10
 data_updated = 0.0
 # 策略最后执行时间 timestamp
 strategy_last_timestamp = 0.0
-
-
-
-app = Dash(__name__)
-
-app.layout = html.Div([
-    dcc.Interval(id='update', interval=data_update_interval*1000, n_intervals=0),
-    dcc.Graph(id="graph",
-        config={
-            'scrollZoom': True,  # 启用或禁用滚动缩放
-        }
-    ),
-])
-
-
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
 
 
@@ -258,7 +243,7 @@ def fig_relayout(fig,relayout_data):
             layout['yaxis2']['range'] = [relayout_data['yaxis2.range[0]'], relayout_data['yaxis2.range[1]']]
         fig['layout'] = layout
 
-def get_charting(symbol, timeframe):
+def get_charting(symbol, timeframe, ex):
         if symbol not in chartdata or timeframe not in chartdata[symbol]:
             get_chart(ex, symbol, timeframe, chart_max_size)
         df = chartdata[symbol][timeframe] 
@@ -289,21 +274,11 @@ def draw_fig_emas(fig, df, emas=[9, 22]):
     for ema in emas:
         fig.add_trace(go.Scatter(x=df.index, y=df['close'].ewm(span=ema, adjust=False).mean(), mode='lines', name='EMA'+str(ema)))
 
-def with_strategy(s, df, args, fig=None):
+def with_strategy(ex, strategy_name, df, args, fig=None):
     global strategy_last_timestamp
-    if s == 'macd':
-        print(f"strategy: {args.strategy}")
+    if strategy_name == 'macd':
         s = s_macd.macd()
-        df= s.populate_indicators(df).tail(chart_max_size)
-        # 获取多 timeframe 的数据
-        dfs = {}
-        timeframes = ['1m', '5m']
-        for timeframe in timeframes:
-            if args.timeframe != timeframe:
-                dfs[timeframe] = get_charting(args.symbol, timeframe)
-                dfs[timeframe] = s.populate_indicators(dfs[timeframe])
-            else:
-                dfs[timeframe] = df
+        df= s.populate_indicators(df).tail(chart_display_size)
 
         df = s.populate_buy_trend(df)
         df = s.populate_sell_trend(df)
@@ -312,13 +287,25 @@ def with_strategy(s, df, args, fig=None):
             side = strategy.amount_limit(ex, df, args.symbol, args.amount, args.amount_max_limit)
             if side is not None:
                 strategy_last_timestamp = last_timestamp
-        # 绘制交易信号
-        display_yaxis_max = df['high'].max()
-        display_yaxis_min = df['low'].min()
-        display_yaxis_span = display_yaxis_max - display_yaxis_min
-        for timeframe in reversed(timeframes):
-            fig = draw_fig_cross_bg(fig, dfs[timeframe], [display_yaxis_max-0.1*display_yaxis_span, display_yaxis_max])
-            display_yaxis_max = display_yaxis_max - 0.1*display_yaxis_span
+        if fig is not None:
+            # 获取多 timeframe 的数据
+            dfs = {}
+            timeframes = ['1m', '5m']
+            for timeframe in timeframes:
+                if args.timeframe != timeframe:
+                    dfs[timeframe] = get_charting(args.symbol, timeframe, ex)
+                    dfs[timeframe] = s.populate_indicators(dfs[timeframe])
+                else:
+                    dfs[timeframe] = df
+            # 绘制交易信号
+            display_yaxis_max = df['high'].max()
+            display_yaxis_min = df['low'].min()
+            display_yaxis_span = display_yaxis_max - display_yaxis_min
+            for timeframe in reversed(timeframes):
+                fig = draw_fig_cross_bg(fig, dfs[timeframe], [display_yaxis_max-0.1*display_yaxis_span, display_yaxis_max])
+                display_yaxis_max = display_yaxis_max - 0.1*display_yaxis_span
+    else:
+        print(f"strategy {strategy_name} not found")
 
     return df.tail(chart_display_size)
 
@@ -326,10 +313,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='exbot for python')
     parser.add_argument('-c', '--config', type=str, required=True, help='config file path')
     parser.add_argument('--symbol', type=str, required=True, help='The trading symbol to use')
-    parser.add_argument('--strategy', type=str, required=True, help='The strategy to use')
+    parser.add_argument('--strategy', type=str, default='', help='The strategy to use')
     parser.add_argument('--amount', type=float, default=1, help='The symbol amount to trade')
     parser.add_argument('--amount_max_limit', type=float, default=1, help='The symbol amount max limit to trade')
     parser.add_argument('-t', '--timeframe', type=str, required=True, help='timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M')
+    # add arg interval
+    parser.add_argument('-i', '--interval', type=int, default=10, help='data update interval seconds < timeframes interval')
     # add arg verbose
     parser.add_argument('-v', '--verbose', action='store_true', help='verbose mode')
     args = parser.parse_args()
@@ -337,12 +326,24 @@ if __name__ == '__main__':
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    logging.info('exbot charting ....')
+    logging.info('exbot charting ...')
 
     config = load_config(args.config)
     ex = exchange.Exchange(config.exchange).get()
     ex.load_markets()
-    print(ex.id())
+    print(f"{ex.id()}, strategy: {args.strategy}")
+
+    app = Dash(__name__, title=args.symbol)
+    data_update_interval = args.interval
+    app.layout = html.Div([
+        dcc.Interval(id='update', interval=data_update_interval*1000, n_intervals=0),
+        dcc.Graph(id="graph",
+            config={
+                'scrollZoom': True,  # 启用或禁用滚动缩放
+            }
+        ),
+    ])
+
     @app.callback(
         Output("graph", "figure"),
         Input("update", "n_intervals"),
@@ -355,13 +356,13 @@ if __name__ == '__main__':
         symbol = args.symbol
         print(f"symbol: {symbol}, updated: {datetime.datetime.fromtimestamp(data_updated)}")
         # 获取图表实时数据
-        df = get_charting(symbol, args.timeframe)
+        df = get_charting(symbol, args.timeframe, ex)
         # 组合图表
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.005, row_heights=[0.7, 0.3])
         # 绘制蜡烛图
         fig_candle = draw_fig_candle(df)
         # 加载策略
-        df_display = with_strategy(args.strategy, df, args, fig_candle)
+        df_display = with_strategy(ex, args.strategy, df, args, fig_candle)
         # print(df_display)
 
         for trace in fig_candle.data:
