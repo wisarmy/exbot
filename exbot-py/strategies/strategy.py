@@ -7,7 +7,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     last_date = df.index[-1]
     # 获取当前仓位
     position = ex.fetch_position(symbol)
-    print(f"position: {position}")
+    # print(f"position: {position}")
 
     side = 'buy' if last['buy'] == 1 else 'sell' if last['sell'] == 1 else None
     if side is None:
