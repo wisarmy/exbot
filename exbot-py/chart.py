@@ -362,20 +362,6 @@ def draw_fig_emas(fig, df, emas=[9, 22]):
         )
 
 
-def draw_fig_vmas(df, vmas=[9, 22]):
-    fig = go.Figure()
-    for vma in vmas:
-        fig.add_trace(
-            go.Scatter(
-                x=df.index,
-                y=df["volume"].rolling(vma).mean(),
-                mode="lines",
-                name="VMA" + str(vma),
-            )
-        )
-    return fig
-
-
 def with_strategy(ex, strategy_name, df, args, fig=None):
     global strategy_last_timestamp
     if strategy_name is not None:
@@ -507,11 +493,11 @@ if __name__ == "__main__":
         )
         # 组合图表
         fig = make_subplots(
-            rows=3,
+            rows=2,
             cols=1,
             shared_xaxes=True,
             vertical_spacing=0.005,
-            row_heights=[0.5, 0.3, 0.2],
+            row_heights=[0.7, 0.3],
         )
         # 绘制蜡烛图
         fig_candle = draw_fig_candle(df)
@@ -538,10 +524,6 @@ if __name__ == "__main__":
         # draw_fig_with_hover_data(fig, hover_data, df_display, macd_yaxis_range)
         # 绘制 EMA
         draw_fig_emas(fig, df, [9, 22])
-        # 绘制 VMA
-        fig_vmas = draw_fig_vmas(df, [9, 22])
-        for trace in fig_vmas.data:
-            fig.add_trace(trace, row=3, col=1)
 
         fig.update_layout(
             height=860,
@@ -564,10 +546,6 @@ if __name__ == "__main__":
                 title="MACD",
                 side="right",
                 range=macd_yaxis_range["range"],
-            ),
-            yaxis3=dict(
-                title="VMA",
-                side="right",
             ),
             dragmode="pan",
         )
