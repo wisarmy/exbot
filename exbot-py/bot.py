@@ -15,13 +15,13 @@ logging.basicConfig(
 
 
 def update(ex, args):
-    print(
-        f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}"
-    )
     # 获取图表实时数据
     df = chart.get_charting(args.symbol, args.timeframe, ex)
     df_display = chart.with_strategy(ex, args.strategy, df, args)
     # print(df_display)
+    print(
+        f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'][-1]}]"
+    )
 
 
 if __name__ == "__main__":

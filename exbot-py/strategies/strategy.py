@@ -4,9 +4,11 @@ from exchanges.bitget import BitgetExchange
 # 数量限制
 def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     side = None
-    # 获取最后一个数据
-    last = df.iloc[-1]
-    last_date = df.index[-1]
+    # 获取最后一个变化的数据
+    changing = df.iloc[-1]
+    # 获取最后一个稳定的数据
+    last = df.iloc[-2]
+    last_date = df.index[-2]
     # 获取当前仓位
     position = ex.fetch_position(symbol)
     # print(f"position: {position}")
@@ -15,7 +17,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     if side is None:
         return side
 
-    print(f"strategy [{side}] signal: {last_date} {last['close']}")
+    print(f"strategy [{side}] signal: [{last_date} {last['close']}]")
     # 如果有新的信号，先取消所有订单
     ex.cancel_orders(symbol)
 
