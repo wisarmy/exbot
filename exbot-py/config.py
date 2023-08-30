@@ -1,5 +1,9 @@
 import tomllib
 from pydantic import BaseModel
+import os
+
+os.environ["TZ"] = "Asia/Shanghai"
+
 
 class Exchange(BaseModel):
     name: str
@@ -10,9 +14,10 @@ class Exchange(BaseModel):
 
 class Config:
     def __init__(self, data) -> None:
-        self.exchange = Exchange(**data['exchange'])
+        self.exchange = Exchange(**data["exchange"])
+
 
 def load_config(config_path) -> Config:
-    with open(config_path, 'rb') as f:
+    with open(config_path, "rb") as f:
         config = tomllib.load(f)
         return Config(config)

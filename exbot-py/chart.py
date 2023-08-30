@@ -16,7 +16,7 @@ from strategies import macd as s_macd
 from strategies import strategy
 
 
-pd.set_option('display.max_rows', 100)
+pd.set_option("display.max_rows", 100)
 # candle data
 chartdata = {}
 chart_max_size = 500
@@ -27,44 +27,64 @@ data_update_interval = 10
 data_updated = 0.0
 # 策略最后执行时间 timestamp
 strategy_last_timestamp = 0.0
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s')
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s",
+)
 
 
 def get_chart(ex, symbol, timeframe, limit):
     ohlcv = download_candles(ex, symbol, timeframe)
-    df = pd.DataFrame(ohlcv, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
-    df['date'] = pd.to_datetime(df['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
+    df = pd.DataFrame(ohlcv, columns=["date", "open", "high", "low", "close", "volume"])
+    df["date"] = pd.to_datetime(df["date"], unit="ms", utc=True).dt.tz_convert(
+        "Asia/Shanghai"
+    )
     # get last some rows
-    df.set_index('date', inplace=True)
+    df.set_index("date", inplace=True)
     df = df.tail(limit)
     if chartdata.get(symbol) is None:
         chartdata[symbol] = {}
     chartdata[symbol][timeframe] = df
 
+
 # 绘制蜡烛图
 def draw_fig_candle(df):
-    fig =  go.Figure(data=[go.Candlestick(x=df.index, open=df['open'], high=df['high'], low=df['low'], close=df['close'])])
-    current_price = df['close'].iloc[-1]
-    color = 'green' if current_price >= df['close'].iloc[-2] else 'red';
+    fig = go.Figure(
+        data=[
+            go.Candlestick(
+                x=df.index,
+                open=df["open"],
+                high=df["high"],
+                low=df["low"],
+                close=df["close"],
+            )
+        ]
+    )
+    current_price = df["close"].iloc[-1]
+    color = "green" if current_price >= df["close"].iloc[-2] else "red"
     fig.add_shape(
-        type='line',
-        y0=current_price, y1=current_price,
-        x0=df.index[0], x1=df.index[-1]+timedelta(days=1),
+        type="line",
+        y0=current_price,
+        y1=current_price,
+        x0=df.index[0],
+        x1=df.index[-1] + timedelta(days=1),
         line=dict(
             color=color,
             width=1,
-            dash='dash',
+            dash="dash",
         ),
     )
     # 在Y轴上显示当前价格
     fig.add_annotation(
-        xref='paper', yref='y',
-        x=1.035, y=current_price,
+        xref="paper",
+        yref="y",
+        x=1.035,
+        y=current_price,
         text="{:.4f}".format(current_price),
         showarrow=False,
         font=dict(
             size=12,
-            color='White',
+            color="White",
         ),
         bgcolor=color,
         bordercolor=color,
@@ -72,65 +92,74 @@ def draw_fig_candle(df):
     )
     cross_bgs = []
     cross_bg_default = dict(
-            start=0,
-            end=0,
-            color='',
-            )
+        start=0,
+        end=0,
+        color="",
+    )
     cross_bg = cross_bg_default
     for index, row in df.iterrows():
-        if 'buy_price' not in row:
+        if "buy_price" not in row:
             continue
         # price = row['buy_price']
         # date = row['date']
         # if price is not None:
-            # xdate = date.strftime('%Y-%m-%d %H:%M:%S%z')
-            # # fig 在买入点的价格位置添加一个向上的三角符号
-            # fig.add_annotation(
-                # dict(
-                    # x=xdate,
-                    # y=price,
-                    # text="▲",
-                    # showarrow=False,
-                    # font=dict(
-                        # family="Courier New, monospace",
-                        # size=11,
-                        # color="#ffffff"
-                    # ),
-                    # align="center",
-                    # arrowcolor="LightSeaGreen",
-                    # arrowsize=1,
-                    # arrowwidth=1,
-                    # bgcolor="LightSeaGreen",
-                    # opacity=0.8
-                # )
-            # )
+        # xdate = date.strftime('%Y-%m-%d %H:%M:%S%z')
+        # # fig 在买入点的价格位置添加一个向上的三角符号
+        # fig.add_annotation(
+        # dict(
+        # x=xdate,
+        # y=price,
+        # text="▲",
+        # showarrow=False,
+        # font=dict(
+        # family="Courier New, monospace",
+        # size=11,
+        # color="#ffffff"
+        # ),
+        # align="center",
+        # arrowcolor="LightSeaGreen",
+        # arrowsize=1,
+        # arrowwidth=1,
+        # bgcolor="LightSeaGreen",
+        # opacity=0.8
+        # )
+        # )
 
     return fig
+
+
 def draw_fig_cross_bg(fig, df, yaxis_range):
     # print(f'yaxis_range: {yaxis_range} {df["date"].iloc[0]} {df["date"].iloc[-1]}')
     cross_bgs = []
     cross_bg_default = dict(
-            start=0,
-            end=0,
-            color='',
-            )
+        start=0,
+        end=0,
+        color="",
+    )
     cross_bg = cross_bg_default
     for index, row in df.iterrows():
-        if row['cross'] != 0:
-            if cross_bg['start'] == 0:
-                cross_bg['start'] = index
-                cross_bg['color'] = 'rgba(0, 255, 0, 0.2)' if row['cross'] == 1 else 'rgba(255, 0, 0, 0.2)'
-            else :
-                cross_bg['end'] = index
+        if row["cross"] != 0:
+            if cross_bg["start"] == 0:
+                cross_bg["start"] = index
+                cross_bg["color"] = (
+                    "rgba(0, 255, 0, 0.2)"
+                    if row["cross"] == 1
+                    else "rgba(255, 0, 0, 0.2)"
+                )
+            else:
+                cross_bg["end"] = index
                 cross_bgs.append(cross_bg.copy())
                 cross_bg = cross_bg_default
-                cross_bg['start'] = index
-                cross_bg['color'] = 'rgba(0, 255, 0, 0.2)' if row['cross'] == 1 else 'rgba(255, 0, 0, 0.2)'
+                cross_bg["start"] = index
+                cross_bg["color"] = (
+                    "rgba(0, 255, 0, 0.2)"
+                    if row["cross"] == 1
+                    else "rgba(255, 0, 0, 0.2)"
+                )
     # 最后一个cross_bg
-    if cross_bg['start'] != 0:
-        cross_bg['end'] = df.index[-1]
+    if cross_bg["start"] != 0:
+        cross_bg["end"] = df.index[-1]
         cross_bgs.append(cross_bg.copy())
-
 
     for cross_bg in cross_bgs:
         fig.add_shape(
@@ -138,15 +167,15 @@ def draw_fig_cross_bg(fig, df, yaxis_range):
                 type="rect",
                 xref="x",
                 yref="y",
-                x0=cross_bg['start'],
+                x0=cross_bg["start"],
                 y0=yaxis_range[0],
-                x1=cross_bg['end'],
+                x1=cross_bg["end"],
                 y1=yaxis_range[1],
                 line=dict(
-                    color=cross_bg['color'],
+                    color=cross_bg["color"],
                     width=1,
                 ),
-                fillcolor=cross_bg['color'],
+                fillcolor=cross_bg["color"],
                 opacity=0.5,
                 layer="below",
                 line_width=0,
@@ -154,144 +183,209 @@ def draw_fig_cross_bg(fig, df, yaxis_range):
         )
     return fig
 
+
 # 绘制MACD指标
 def draw_fig_macd(df):
-        close_prices = df['close'].values  # 获取收盘价的数据
-        # 计算MACD指标
-        # 设置参数
-        fast_period = 12
-        slow_period = 26
-        signal_period = 9
-        macd, signal, hist = talib.MACD(close_prices, fast_period, slow_period, signal_period)
-        macd_y_min = min(hist[-chart_display_size:].min(), macd[-chart_display_size:].min(), signal[-chart_display_size:].min())
-        macd_y_max = max(hist[-chart_display_size:].max(), macd[-chart_display_size:].max(), signal[-chart_display_size:].max())
-        # 画MACD指标
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(
+    close_prices = df["close"].values  # 获取收盘价的数据
+    # 计算MACD指标
+    # 设置参数
+    fast_period = 12
+    slow_period = 26
+    signal_period = 9
+    macd, signal, hist = talib.MACD(
+        close_prices, fast_period, slow_period, signal_period
+    )
+    macd_y_min = min(
+        hist[-chart_display_size:].min(),
+        macd[-chart_display_size:].min(),
+        signal[-chart_display_size:].min(),
+    )
+    macd_y_max = max(
+        hist[-chart_display_size:].max(),
+        macd[-chart_display_size:].max(),
+        signal[-chart_display_size:].max(),
+    )
+    # 画MACD指标
+    fig = go.Figure()
+    fig.add_trace(
+        go.Scatter(
             x=df.index,
             y=macd,
-            name='DIF',
-            mode='lines',
-            line=dict(color='orange', width=1),
-            yaxis='y2',
-        ))
-        fig.add_trace(go.Scatter(
+            name="DIF",
+            mode="lines",
+            line=dict(color="orange", width=1),
+            yaxis="y2",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
             x=df.index,
             y=signal,
-            name='DEA',
-            mode='lines',
-            line=dict(color='blue', width=1),
-            yaxis='y2',
-        ))
-        fig.add_trace(go.Bar(
+            name="DEA",
+            mode="lines",
+            line=dict(color="blue", width=1),
+            yaxis="y2",
+        )
+    )
+    fig.add_trace(
+        go.Bar(
             x=df.index,
             y=hist,
-            name='MACD',
-            marker=dict(color='grey'),
-            yaxis='y2',
-        ))
+            name="MACD",
+            marker=dict(color="grey"),
+            yaxis="y2",
+        )
+    )
 
-        return fig, dict(range=[macd_y_min, macd_y_max])
+    return fig, dict(range=[macd_y_min, macd_y_max])
+
+
 # 绘制鼠标点击的垂直线
 def draw_fig_with_click_data(fig, click_data, df, macd_yaxis_range):
     if click_data is not None:
-        if 'x' in click_data['points'][0]:
-            x = click_data['points'][0]['x']
-            xdate = pd.to_datetime(x).tz_localize('Asia/Shanghai').strftime('%Y-%m-%d %H:%M:%S%z')
+        if "x" in click_data["points"][0]:
+            x = click_data["points"][0]["x"]
+            xdate = (
+                pd.to_datetime(x)
+                .tz_localize("Asia/Shanghai")
+                .strftime("%Y-%m-%d %H:%M:%S%z")
+            )
             shape = dict(
-                type='line',
-                x0=xdate, y0=min(macd_yaxis_range['range'][0], df['low'].min())*0.8,
-                x1=xdate, y1=max(macd_yaxis_range['range'][1], df['high'].max())*1.2,
+                type="line",
+                x0=xdate,
+                y0=min(macd_yaxis_range["range"][0], df["low"].min()) * 0.8,
+                x1=xdate,
+                y1=max(macd_yaxis_range["range"][1], df["high"].max()) * 1.2,
                 line=dict(
-                    color='black',
+                    color="black",
                     width=1,
-                    dash='dash',
-                )
+                    dash="dash",
+                ),
             )
             fig.add_shape(shape, row=1, col=1)
             fig.add_shape(shape, row=2, col=1)
+
 
 # 绘制鼠标悬停的垂直线
 def draw_fig_with_hover_data(fig, hover_data, df, macd_yaxis_range):
     if hover_data is not None:
-        if 'x' in hover_data['points'][0]:
-            x = hover_data['points'][0]['x']
-            xdate = pd.to_datetime(x).tz_localize('Asia/Shanghai').strftime('%Y-%m-%d %H:%M:%S%z')
+        if "x" in hover_data["points"][0]:
+            x = hover_data["points"][0]["x"]
+            xdate = (
+                pd.to_datetime(x)
+                .tz_localize("Asia/Shanghai")
+                .strftime("%Y-%m-%d %H:%M:%S%z")
+            )
             shape = dict(
-                type='line',
-                x0=xdate, y0=min(macd_yaxis_range['range'][0], df['low'].min())*0.8,
-                x1=xdate, y1=max(macd_yaxis_range['range'][1], df['high'].max())*1.2,
+                type="line",
+                x0=xdate,
+                y0=min(macd_yaxis_range["range"][0], df["low"].min()) * 0.8,
+                x1=xdate,
+                y1=max(macd_yaxis_range["range"][1], df["high"].max()) * 1.2,
                 line=dict(
-                    color='darkgrey',
+                    color="darkgrey",
                     width=1,
-                    dash='dot',
-                )
+                    dash="dot",
+                ),
             )
             fig.add_shape(shape, row=1, col=1)
             fig.add_shape(shape, row=2, col=1)
 
-def fig_relayout(fig,relayout_data):
+
+def fig_relayout(fig, relayout_data):
     if relayout_data:
-        layout = fig['layout']
-        if 'xaxis.range[0]' in relayout_data:
-            layout['xaxis']['range'] = [relayout_data['xaxis.range[0]'], relayout_data['xaxis.range[1]']]
-        if 'xaxis2.range[0]' in relayout_data:
-            layout['xaxis2']['range'] = [relayout_data['xaxis2.range[0]'], relayout_data['xaxis2.range[1]']]
-        if 'yaxis.range[0]' in relayout_data:
-            layout['yaxis']['range'] = [relayout_data['yaxis.range[0]'], relayout_data['yaxis.range[1]']]
-        if 'yaxis2.range[0]' in relayout_data:
-            layout['yaxis2']['range'] = [relayout_data['yaxis2.range[0]'], relayout_data['yaxis2.range[1]']]
-        fig['layout'] = layout
+        layout = fig["layout"]
+        if "xaxis.range[0]" in relayout_data:
+            layout["xaxis"]["range"] = [
+                relayout_data["xaxis.range[0]"],
+                relayout_data["xaxis.range[1]"],
+            ]
+        if "xaxis2.range[0]" in relayout_data:
+            layout["xaxis2"]["range"] = [
+                relayout_data["xaxis2.range[0]"],
+                relayout_data["xaxis2.range[1]"],
+            ]
+        if "yaxis.range[0]" in relayout_data:
+            layout["yaxis"]["range"] = [
+                relayout_data["yaxis.range[0]"],
+                relayout_data["yaxis.range[1]"],
+            ]
+        if "yaxis2.range[0]" in relayout_data:
+            layout["yaxis2"]["range"] = [
+                relayout_data["yaxis2.range[0]"],
+                relayout_data["yaxis2.range[1]"],
+            ]
+        fig["layout"] = layout
+
 
 def get_charting(symbol, timeframe, ex):
-        if symbol not in chartdata or timeframe not in chartdata[symbol]:
-            get_chart(ex, symbol, timeframe, chart_max_size)
-        df = chartdata[symbol][timeframe] 
-        # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
-        last_date = df.index[-1]
+    if symbol not in chartdata or timeframe not in chartdata[symbol]:
+        get_chart(ex, symbol, timeframe, chart_max_size)
+    df = chartdata[symbol][timeframe]
+    # last_date_timestamp = int(df.iloc[-1]['date'].timestamp()*1000)
+    last_date = df.index[-1]
 
-        # 只获取最新的蜡烛图，会导致最终的蜡烛图没更新到最新就切换到下一个蜡烛图了，造成数据不准确
-        # 所以获取最后两根蜡烛图去修复上一根蜡烛图的数据
-        global data_updated
-        current_timestamp = time.time()
-        if round(current_timestamp - data_updated) >= data_update_interval:
-            data_updated = current_timestamp
-            logging.debug(f"update candles: {symbol}, {data_updated}")
-            last_candles: list = ex.get_candles(symbol, timeframe, None, 2)
-            df_last = pd.DataFrame(last_candles, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
-            df_last['date'] = pd.to_datetime(df_last['date'], unit='ms', utc=True).dt.tz_convert('Asia/Shanghai')
-            df_last.set_index('date', inplace=True)
+    # 只获取最新的蜡烛图，会导致最终的蜡烛图没更新到最新就切换到下一个蜡烛图了，造成数据不准确
+    # 所以获取最后两根蜡烛图去修复上一根蜡烛图的数据
+    global data_updated
+    current_timestamp = time.time()
+    if round(current_timestamp - data_updated) >= data_update_interval:
+        data_updated = current_timestamp
+        logging.debug(f"update candles: {symbol}, {data_updated}")
+        last_candles: list = ex.get_candles(symbol, timeframe, None, 2)
+        df_last = pd.DataFrame(
+            last_candles, columns=["date", "open", "high", "low", "close", "volume"]
+        )
+        df_last["date"] = pd.to_datetime(
+            df_last["date"], unit="ms", utc=True
+        ).dt.tz_convert("Asia/Shanghai")
+        df_last.set_index("date", inplace=True)
 
-            if last_date == df_last.index[-1]:
-                df.loc[last_date] = dict(zip(df.columns, df_last.iloc[-1]))
-            elif last_date < df_last.index[-1]: 
-                df.loc[df_last.index[-1]] = dict(zip(df.columns, df_last.iloc[-1]))
-                # 添加新的蜡烛图后，需要把上一根蜡烛图的数据修复
-                df.loc[df_last.index[-2]] = dict(zip(df.columns, df_last.iloc[-2]))
-        return df
+        if last_date == df_last.index[-1]:
+            df.loc[last_date] = dict(zip(df.columns, df_last.iloc[-1]))
+        elif last_date < df_last.index[-1]:
+            df.loc[df_last.index[-1]] = dict(zip(df.columns, df_last.iloc[-1]))
+            # 添加新的蜡烛图后，需要把上一根蜡烛图的数据修复
+            df.loc[df_last.index[-2]] = dict(zip(df.columns, df_last.iloc[-2]))
+    return df
+
 
 def draw_fig_emas(fig, df, emas=[9, 22]):
     for ema in emas:
-        fig.add_trace(go.Scatter(x=df.index, y=df['close'].ewm(span=ema, adjust=False).mean(), mode='lines', name='EMA'+str(ema)))
+        fig.add_trace(
+            go.Scatter(
+                x=df.index,
+                y=df["close"].ewm(span=ema, adjust=False).mean(),
+                mode="lines",
+                name="EMA" + str(ema),
+            )
+        )
+
 
 def with_strategy(ex, strategy_name, df, args, fig=None):
     global strategy_last_timestamp
     if strategy_name is not None:
-        if strategy_name == 'macd':
+        if strategy_name == "macd":
             s = s_macd.macd()
-            df= s.populate_indicators(df).tail(chart_display_size)
+            df = s.populate_indicators(df).tail(chart_display_size)
 
             df = s.populate_buy_trend(df)
             df = s.populate_sell_trend(df)
-            last_timestamp = pd.to_datetime(df.index[-1], unit='ms', utc=True).tz_convert('Asia/Shanghai').timestamp()
+            last_timestamp = (
+                pd.to_datetime(df.index[-1], unit="ms", utc=True)
+                .tz_convert("Asia/Shanghai")
+                .timestamp()
+            )
             if last_timestamp > strategy_last_timestamp:
-                side = strategy.amount_limit(ex, df, args.symbol, args.amount, args.amount_max_limit)
+                side = strategy.amount_limit(
+                    ex, df, args.symbol, args.amount, args.amount_max_limit
+                )
                 if side is not None:
                     strategy_last_timestamp = last_timestamp
             if fig is not None:
                 # 获取多 timeframe 的数据
                 dfs = {}
-                timeframes = ['1m', '5m']
+                timeframes = ["1m", "5m"]
                 for timeframe in timeframes:
                     if args.timeframe != timeframe:
                         dfs[timeframe] = get_charting(args.symbol, timeframe, ex)
@@ -299,35 +393,68 @@ def with_strategy(ex, strategy_name, df, args, fig=None):
                     else:
                         dfs[timeframe] = df
                 # 绘制交易信号
-                display_yaxis_max = df['high'].max()
-                display_yaxis_min = df['low'].min()
+                display_yaxis_max = df["high"].max()
+                display_yaxis_min = df["low"].min()
                 display_yaxis_span = display_yaxis_max - display_yaxis_min
                 for timeframe in reversed(timeframes):
-                    fig = draw_fig_cross_bg(fig, dfs[timeframe], [display_yaxis_max-0.1*display_yaxis_span, display_yaxis_max])
-                    display_yaxis_max = display_yaxis_max - 0.1*display_yaxis_span
+                    fig = draw_fig_cross_bg(
+                        fig,
+                        dfs[timeframe],
+                        [
+                            display_yaxis_max - 0.1 * display_yaxis_span,
+                            display_yaxis_max,
+                        ],
+                    )
+                    display_yaxis_max = display_yaxis_max - 0.1 * display_yaxis_span
         else:
             print(f"strategy {strategy_name} not found")
 
     return df.tail(chart_display_size)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='exbot for python')
-    parser.add_argument('-c', '--config', type=str, required=True, help='config file path')
-    parser.add_argument('--symbol', type=str, required=True, help='The trading symbol to use')
-    parser.add_argument('--strategy', type=str, default=None, help='The strategy to use')
-    parser.add_argument('--amount', type=float, default=1, help='The symbol amount to trade')
-    parser.add_argument('--amount_max_limit', type=float, default=1, help='The symbol amount max limit to trade')
-    parser.add_argument('-t', '--timeframe', type=str, required=True, help='timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M')
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="exbot for python")
+    parser.add_argument(
+        "-c", "--config", type=str, required=True, help="config file path"
+    )
+    parser.add_argument(
+        "--symbol", type=str, required=True, help="The trading symbol to use"
+    )
+    parser.add_argument(
+        "--strategy", type=str, default=None, help="The strategy to use"
+    )
+    parser.add_argument(
+        "--amount", type=float, default=1, help="The symbol amount to trade"
+    )
+    parser.add_argument(
+        "--amount_max_limit",
+        type=float,
+        default=1,
+        help="The symbol amount max limit to trade",
+    )
+    parser.add_argument(
+        "-t",
+        "--timeframe",
+        type=str,
+        required=True,
+        help="timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M",
+    )
     # add arg interval
-    parser.add_argument('-i', '--interval', type=int, default=10, help='data update interval seconds < timeframes interval')
+    parser.add_argument(
+        "-i",
+        "--interval",
+        type=int,
+        default=10,
+        help="data update interval seconds < timeframes interval",
+    )
     # add arg verbose
-    parser.add_argument('-v', '--verbose', action='store_true', help='verbose mode')
+    parser.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
     args = parser.parse_args()
 
     if args.verbose:
         logging.getLogger().setLevel(logging.DEBUG)
 
-    logging.info('exbot charting ...')
+    logging.info("exbot charting ...")
 
     config = load_config(args.config)
     ex = exchange.Exchange(config.exchange).get()
@@ -336,30 +463,42 @@ if __name__ == '__main__':
 
     app = Dash(__name__, title=args.symbol)
     data_update_interval = args.interval
-    app.layout = html.Div([
-        dcc.Interval(id='update', interval=data_update_interval*1000, n_intervals=0),
-        dcc.Graph(id="graph",
-            config={
-                'scrollZoom': True,  # 启用或禁用滚动缩放
-            }
-        ),
-    ])
+    app.layout = html.Div(
+        [
+            dcc.Interval(
+                id="update", interval=data_update_interval * 1000, n_intervals=0
+            ),
+            dcc.Graph(
+                id="graph",
+                config={
+                    "scrollZoom": True,  # 启用或禁用滚动缩放
+                },
+            ),
+        ]
+    )
 
     @app.callback(
         Output("graph", "figure"),
         Input("update", "n_intervals"),
-        Input('graph', 'clickData'),
+        Input("graph", "clickData"),
         # Input('graph', 'hoverData'),
-        State("graph", "relayoutData")
-
+        State("graph", "relayoutData"),
     )
     def update_graph(n, click_data, relayout_data):
         symbol = args.symbol
-        print(f"symbol: {symbol}, updated: {datetime.datetime.fromtimestamp(data_updated)}")
+        print(
+            f"symbol: {symbol}, updated: {datetime.datetime.fromtimestamp(data_updated)}"
+        )
         # 获取图表实时数据
         df = get_charting(symbol, args.timeframe, ex)
         # 组合图表
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.005, row_heights=[0.7, 0.3])
+        fig = make_subplots(
+            rows=2,
+            cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.005,
+            row_heights=[0.7, 0.3],
+        )
         # 绘制蜡烛图
         fig_candle = draw_fig_candle(df)
         # 加载策略
@@ -390,22 +529,25 @@ if __name__ == '__main__':
             height=860,
             title=symbol,
             xaxis=dict(
-                rangeslider=dict(
-                    visible=False
-                ),
-                range=[df_display.index[0], df_display.index[-1]+timedelta(minutes=60)],
+                rangeslider=dict(visible=False),
+                range=[
+                    df_display.index[0],
+                    df_display.index[-1] + timedelta(minutes=60),
+                ],
             ),
             yaxis=dict(
-                side='right',
-                range=[df_display['low'].min()*0.999, df_display['high'].max()*1.001],
-
+                side="right",
+                range=[
+                    df_display["low"].min() * 0.999,
+                    df_display["high"].max() * 1.001,
+                ],
             ),
             yaxis2=dict(
-                title='MACD',
-                side='right',
-                range=macd_yaxis_range['range'],
+                title="MACD",
+                side="right",
+                range=macd_yaxis_range["range"],
             ),
-            dragmode='pan',
+            dragmode="pan",
         )
         # 设定图表到上次的位置
         fig_relayout(fig, relayout_data)
@@ -413,7 +555,3 @@ if __name__ == '__main__':
         return fig
 
     app.run_server(debug=True)
-
-
-
-    

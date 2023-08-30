@@ -22,18 +22,19 @@ class BitgetExchange:
     def rateLimit(self):
         return self.exchange.rateLimit
 
-    def get_balance(self, quote, account_type='futures'):
-        if account_type == 'futures':
-            if self.exchange.has['fetchBalance']:
+    def get_balance(self, quote, account_type="futures"):
+        if account_type == "futures":
+            if self.exchange.has["fetchBalance"]:
                 # Fetch the balance
-                balance = self.exchange.fetch_balance(params={'type': 'swap'})
+                balance = self.exchange.fetch_balance(params={"type": "swap"})
 
-                for currency_balance in balance['info']:
-                    if currency_balance['marginCoin'] == quote:
-                        return float(currency_balance['equity'])
+                for currency_balance in balance["info"]:
+                    if currency_balance["marginCoin"] == quote:
+                        return float(currency_balance["equity"])
         else:
             # Handle other account types or fallback to default behavior
             pass
+
     def get_open_orders(self, symbol: str) -> list:
         open_orders = []
         try:
@@ -42,23 +43,46 @@ class BitgetExchange:
             for order in orders:
                 if "info" in order:
                     info = order["info"]
-                    if "state" in info and info["state"] == "new":  # Change "status" to "state"
+                    if (
+                        "state" in info and info["state"] == "new"
+                    ):  # Change "status" to "state"
                         order_data = {
-                            "id": info.get("orderId", ""),  # Change "order_id" to "orderId"
-                            "price": info.get("price", 0.0),  # Use the correct field name
+                            "id": info.get(
+                                "orderId", ""
+                            ),  # Change "order_id" to "orderId"
+                            "price": info.get(
+                                "price", 0.0
+                            ),  # Use the correct field name
                             "qty": info.get("size", 0.0),  # Change "qty" to "size"
                             "side": info.get("side", ""),
                             "reduce_only": info.get("reduceOnly", False),
                         }
                         open_orders.append(order_data)
         except Exception as e:
-            logging.warning(f"An unknown error occurred in get_open_orders_debug(): {e}")
+            logging.warning(
+                f"An unknown error occurred in get_open_orders_debug(): {e}"
+            )
         return open_orders
 
-    def create_order_limit(self, symbol: str, side: Literal['buy', 'sell'], amount: float, price: float, params: dict = {}):
-        return self.exchange.create_order(symbol, 'limit', side, amount, price, params)
-    def create_order_market(self, symbol: str, side: Literal['buy', 'sell'], amount: float, params: dict = {}):
-        return self.exchange.create_order(symbol, 'market', side, amount, params)
+    def create_order_limit(
+        self,
+        symbol: str,
+        side: Literal["buy", "sell"],
+        amount: float,
+        price: float,
+        params: dict = {},
+    ):
+        return self.exchange.create_order(symbol, "limit", side, amount, price, params)
+
+    def create_order_market(
+        self,
+        symbol: str,
+        side: Literal["buy", "sell"],
+        amount: float,
+        params: dict = {},
+    ):
+        return self.exchange.create_order(symbol, "market", side, amount, params)
+
     def cancel_orders(self, symbol: str):
         try:
             get_open_orders = self.get_open_orders(symbol)
@@ -67,21 +91,24 @@ class BitgetExchange:
                 return
             ids = []
             for order in get_open_orders:
-                ids.append(order['id'])
+                ids.append(order["id"])
                 # print(f"Canceling order: {order}")
                 # self.exchange.cancel_order(order['id'], symbol)
             print(f"Canceling orders: {ids}")
             self.exchange.cancel_orders(ids, symbol)
         except Exception as e:
             logging.warning(f"An unknown error occurred in cancel_orders(): {e}")
+
     # 平仓
-    def close_position(self, symbol: str, side: Literal['buy', 'sell'], amount: float):
-        try: 
-            self.exchange.create_market_order(symbol, side, amount, params={'reduceOnly': True})
+    def close_position(self, symbol: str, side: Literal["buy", "sell"], amount: float):
+        try:
+            self.exchange.create_market_order(
+                symbol, side, amount, params={"reduceOnly": True}
+            )
         except Exception as e:
             logging.warning(f"An unknown error occurred in close_position(): {e}")
 
-    def get_current_candle(self, symbol: str, timeframe='1m', retries=3, delay=60):
+    def get_current_candle(self, symbol: str, timeframe="1m", retries=3, delay=60):
         for _ in range(retries):
             try:
                 # Fetch the most recent 2 candles
@@ -96,18 +123,28 @@ class BitgetExchange:
                 print("Rate limit exceeded... sleeping for {} seconds".format(delay))
                 time.sleep(delay)
 
-        raise RateLimitExceeded("Failed to fetch candle data after {} retries".format(retries))
-    def get_candles(self, symbol: str, timeframe='1m', since=None, limit=10, retries=3, delay=60):
+        raise RateLimitExceeded(
+            "Failed to fetch candle data after {} retries".format(retries)
+        )
+
+    def get_candles(
+        self, symbol: str, timeframe="1m", since=None, limit=10, retries=3, delay=60
+    ):
         for _ in range(retries):
             try:
-                ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, since=since, limit=limit)
+                ohlcv = self.exchange.fetch_ohlcv(
+                    symbol, timeframe, since=since, limit=limit
+                )
                 return ohlcv
 
             except RateLimitExceeded:
                 print("Rate limit exceeded... sleeping for {} seconds".format(delay))
                 time.sleep(delay)
 
-        raise RateLimitExceeded("Failed to fetch candle data after {} retries".format(retries))
+        raise RateLimitExceeded(
+            "Failed to fetch candle data after {} retries".format(retries)
+        )
+
     # get all candles from since to now
     def get_all_candles(self, symbol, timeframe, since=None):
         candles = []
@@ -116,7 +153,9 @@ class BitgetExchange:
             if since is None:
                 ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit)
             else:
-                ohlcv = self.exchange.fetch_ohlcv(symbol, timeframe, limit=limit, since=since)
+                ohlcv = self.exchange.fetch_ohlcv(
+                    symbol, timeframe, limit=limit, since=since
+                )
             candles.extend(ohlcv)
             if len(ohlcv) < limit:
                 break
@@ -153,9 +192,13 @@ class BitgetExchange:
                 if position["entryPrice"] is None:
                     continue
                 side = position["side"]
-                values[side]["qty"] = float(position["contracts"])  # Use "contracts" instead of "contractSize"
+                values[side]["qty"] = float(
+                    position["contracts"]
+                )  # Use "contracts" instead of "contractSize"
                 values[side]["price"] = float(position["entryPrice"])
-                values[side]["realised"] = round(float(position["info"]["achievedProfits"]), 4)
+                values[side]["realised"] = round(
+                    float(position["info"]["achievedProfits"]), 4
+                )
                 values[side]["upnl"] = round(float(position["unrealizedPnl"]), 4)
                 if position["liquidationPrice"] is not None:
                     values[side]["liq_price"] = float(position["liquidationPrice"])
@@ -166,7 +209,3 @@ class BitgetExchange:
         except Exception as e:
             logging.info(f"An unknown error occurred in fetch_position: {e}")
         return values
-
-
-
-
