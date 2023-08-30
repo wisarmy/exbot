@@ -13,12 +13,6 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     # 获取当前仓位
     position = ex.fetch_position(symbol)
     # print(f"position: {position}")
-    # 空单盈利
-    if position["short"]["upnl"] > 0:
-        print(f"short position profit: {position['short']['upnl']}")
-    # 多单盈利
-    if position["long"]["upnl"] > 0:
-        print(f"long position profit: {position['long']['upnl']}")
 
     side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
     if side is None:
@@ -34,7 +28,9 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
             # 判断是否有空仓
             if position["short"]["qty"] > 0:
                 # 平空
-                print(f"close short: {last['close']}")
+                print(
+                    f"close short: {last['close']}, profit: {position['short']['upnl']}"
+                )
                 ex.close_position(symbol, "buy", amount)
                 # 如果全部平仓，反向开单
                 if amount == position["short"]["qty"]:
@@ -63,7 +59,9 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
             # 判断是否有多仓
             if position["long"]["qty"] > 0:
                 # 平多
-                print(f"close long: {last['close']}")
+                print(
+                    f"close long: {last['close']}, profit: {position['long']['upnl']}"
+                )
                 ex.close_position(symbol, "sell", amount)
                 # 如果全部平仓，反向开单
                 if amount == position["long"]["qty"]:
