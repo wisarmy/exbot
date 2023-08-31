@@ -28,9 +28,9 @@ def get_signal_record(df, threshold=None, ref_time=None):
     # 根据剩余换线的时间，来确定使用 -1 还是 -2
     index = -1 if timeframe_seconds - elapsed_seconds <= threshold else -2
 
-    print(
-        f"df_last_date: {df_last_date}, ref_time: {ref_time}, elapsed_seconds: {elapsed_seconds}, timeframe_seconds: {timeframe_seconds}, threshold: {threshold}, index: {index}"
-    )
+    # print(
+    #     f"df_last_date: {df_last_date}, ref_time: {ref_time}, elapsed_seconds: {elapsed_seconds}, timeframe_seconds: {timeframe_seconds}, threshold: {threshold}, index: {index}"
+    # )
 
     return df.iloc[index], df.index[index]
 
@@ -43,9 +43,19 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     position = ex.fetch_position(symbol)
     # print(f"position: {position}")
 
+    print(
+        f"position: short profit: {position['short']['upnl']}, long profit: {position['long']['upnl']}"
+    )
+
+    # 记录已经使用过
+    if last.get("used") == 1:
+        return side
+
     side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
     if side is None:
         return side
+
+    df.loc[last_date, "used"] = 1
 
     print(f"strategy [{side}] signal: [{last_date} {last['close']}]")
     # 如果有新的信号，先取消所有订单

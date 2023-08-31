@@ -25,8 +25,6 @@ chart_display_size = 200
 data_update_interval = 10
 # 数据更新时间 timestamp
 data_updated = 0.0
-# 策略最后执行时间 timestamp
-strategy_last_timestamp = 0.0
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s",
@@ -363,7 +361,6 @@ def draw_fig_emas(fig, df, emas=[9, 22]):
 
 
 def with_strategy(ex, strategy_name, df, args, fig=None):
-    global strategy_last_timestamp
     if strategy_name is not None:
         if strategy_name == "macd":
             s = s_macd.macd()
@@ -371,17 +368,9 @@ def with_strategy(ex, strategy_name, df, args, fig=None):
 
             df = s.populate_buy_trend(df)
             df = s.populate_sell_trend(df)
-            last_timestamp = (
-                pd.to_datetime(df.index[-1], unit="ms", utc=True)
-                .tz_convert("Asia/Shanghai")
-                .timestamp()
+            side = strategy.amount_limit(
+                ex, df, args.symbol, args.amount, args.amount_max_limit
             )
-            if last_timestamp > strategy_last_timestamp:
-                side = strategy.amount_limit(
-                    ex, df, args.symbol, args.amount, args.amount_max_limit
-                )
-                if side is not None:
-                    strategy_last_timestamp = last_timestamp
             if fig is not None:
                 # 获取多 timeframe 的数据
                 dfs = {}
