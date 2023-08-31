@@ -31,12 +31,6 @@ class macd:
     sell_profit_only = False
 
     def populate_indicators(self, dataframe: DataFrame) -> DataFrame:
-        # heikinashi = qtpylib.heikinashi(dataframe)
-        # dataframe['open'] = heikinashi['open']
-        # dataframe['close'] = heikinashi['close']
-        # dataframe['high'] = heikinashi['high']
-        # dataframe['low'] = heikinashi['low']
-
         close_prices = dataframe["close"].values  # 获取收盘价的数据
         fast_period = 12
         slow_period = 26

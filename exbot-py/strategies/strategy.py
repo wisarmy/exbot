@@ -2,6 +2,18 @@ import datetime
 from exchanges.bitget import BitgetExchange
 import pytz
 
+from collections import OrderedDict
+
+used_cache = OrderedDict()
+cache_size = 128
+
+
+def set_used_cache(key, value):
+    used_cache[key] = value
+    if len(used_cache) > cache_size:
+        # 去除最旧的键值
+        used_cache.popitem(last=False)
+
 
 # threshold 剩余多少 s 换线
 def get_signal_record(df, threshold=None, ref_time=None):
@@ -48,7 +60,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     )
 
     # 记录已经使用过
-    if last.get("used") == 1:
+    if used_cache.get(last_date) == 1:
         return side
 
     side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
@@ -56,6 +68,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
         return side
 
     df.loc[last_date, "used"] = 1
+    set_used_cache(last_date, 1)
 
     print(f"strategy [{side}] signal: [{last_date} {last['close']}]")
     # 如果有新的信号，先取消所有订单
