@@ -1,5 +1,6 @@
 import datetime
 from exchanges.bitget import BitgetExchange
+import pytz
 
 
 # threshold 剩余多少 s 换线
@@ -17,7 +18,11 @@ def get_signal_record(df, threshold=None, ref_time=None):
         else:
             threshold = 30
 
-    ref_time = datetime.datetime.now() if ref_time is None else ref_time
+    ref_time = (
+        datetime.datetime.now(tz=pytz.timezone("Asia/Shanghai"))
+        if ref_time is None
+        else ref_time
+    )
     elapsed_seconds = (ref_time - df_last_date).total_seconds()
 
     # 根据剩余换线的时间，来确定使用 -1 还是 -2
