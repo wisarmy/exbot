@@ -1,15 +1,39 @@
+import datetime
 from exchanges.bitget import BitgetExchange
+
+
+# threshold 剩余多少 s 换线
+def get_signal_record(df, threshold=None, ref_time=None):
+    df_last = df.iloc[-1]
+    df_last_date = df.index[-1]
+    timeframe_seconds = df.index.to_series().diff().min().total_seconds()
+    if threshold is None:
+        if timeframe_seconds == 60:
+            threshold = 10
+        elif timeframe_seconds == 5 * 60:
+            threshold = 15
+        elif timeframe_seconds == 15 * 60:
+            threshold = 20
+        else:
+            threshold = 30
+
+    ref_time = datetime.datetime.now() if ref_time is None else ref_time
+    elapsed_seconds = (ref_time - df_last_date).total_seconds()
+
+    # 根据剩余换线的时间，来确定使用 -1 还是 -2
+    index = -1 if timeframe_seconds - elapsed_seconds <= threshold else -2
+
+    print(
+        f"df_last_date: {df_last_date}, ref_time: {ref_time}, elapsed_seconds: {elapsed_seconds}, timeframe_seconds: {timeframe_seconds}, threshold: {threshold}, index: {index}"
+    )
+
+    return df.iloc[index], df.index[index]
 
 
 # 数量限制
 def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
-    # TODO 根据当前时间在 changing timeframe 的位置，来确定使用 -1 还是 -2
     side = None
-    # 获取最后一个变化的数据
-    changing = df.iloc[-1]
-    # 获取最后一个稳定的数据
-    last = df.iloc[-2]
-    last_date = df.index[-2]
+    last, last_date = get_signal_record(df)
     # 获取当前仓位
     position = ex.fetch_position(symbol)
     # print(f"position: {position}")
