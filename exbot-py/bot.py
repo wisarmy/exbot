@@ -6,19 +6,18 @@ from config import load_config
 
 from exchanges import exchange
 import chart
+import pandas as pd
+from logger import logger
 
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s",
-)
+pd.set_option("display.max_columns", None)
+pd.set_option("display.width", 1000)
 
 
 def update(ex, args):
     # 获取图表实时数据
     df = chart.get_charting(args.symbol, args.timeframe, ex)
     df_display = chart.with_strategy(ex, args.strategy, df, args)
-    # print(df_display)
+    logger.debug(df_display)
     print(
         f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'][-1]}]"
     )
@@ -62,9 +61,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        # logging.getLogger().setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+        pd.set_option("display.max_rows", None)
 
-    logging.info("exbot starting ...")
+    logger.info("exbot starting ...")
 
     config = load_config(args.config)
     ex = exchange.Exchange(config.exchange).get()

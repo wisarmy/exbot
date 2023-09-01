@@ -1,6 +1,7 @@
 import datetime
 from exchanges.bitget import BitgetExchange
 import pytz
+from logger import logger
 
 from collections import OrderedDict
 
@@ -47,6 +48,44 @@ def get_signal_record(df, threshold=None, ref_time=None):
     return df.iloc[index], df.index[index]
 
 
+def handle_take_profit(last, ex: BitgetExchange, symbol, position):
+    if last["take_profit"] == "sell":
+        if position["short"]["qty"] > 0:
+            print(
+                f"take_profit short: {last['close']}, profit: {position['short']['upnl']}"
+            )
+            ex.close_position(symbol, "buy", position["short"]["qty"])
+            return True
+    elif last["take_profit"] == "buy":
+        if position["long"]["qty"] > 0:
+            print(
+                f"take_profit long: {last['close']}, profit: {position['long']['upnl']}"
+            )
+            ex.close_position(symbol, "sell", position["long"]["qty"])
+            return True
+
+    return False
+
+
+def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
+    if last["stop_loss"] == "sell":
+        if position["short"]["qty"] > 0:
+            print(
+                f"stop_loss short: {last['close']}, profit: {position['short']['upnl']}"
+            )
+            ex.close_position(symbol, "buy", position["short"]["qty"])
+            return True
+    elif last["stop_loss"] == "buy":
+        if position["long"]["qty"] > 0:
+            print(
+                f"stop_loss long: {last['close']}, profit: {position['long']['upnl']}"
+            )
+            ex.close_position(symbol, "sell", position["long"]["qty"])
+            return True
+
+    return False
+
+
 # 数量限制
 def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     side = None
@@ -65,9 +104,15 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
 
     side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
     if side is None:
+        # 止盈止损信号
+        if handle_take_profit(last, ex, symbol, position):
+            set_used_cache(last_date, 1)
+
+        if handle_stop_loss(last, ex, symbol, position):
+            set_used_cache(last_date, 1)
+
         return side
 
-    df.loc[last_date, "used"] = 1
     set_used_cache(last_date, 1)
 
     print(f"strategy [{side}] signal: [{last_date} {last['close']}]")
@@ -100,8 +145,14 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 else:
                     # 超出最大仓位
                     print(f"long position is max: {position['long']['qty']}")
-                    # 如果是盈利的，平仓
-                    if position["long"]["upnl"] > 0:
+                    # 如果是盈利的，平仓 , 0.0006 * 2的手续费
+                    if (
+                        position["long"]["upnl"]
+                        > position["long"]["qty"]
+                        * position["long"]["price"]
+                        * 0.0006
+                        * 2
+                    ):
                         print(
                             f"close long: {last['close']}, profit: {position['long']['upnl']}"
                         )
@@ -130,8 +181,14 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 else:
                     # 超出最大仓位
                     print(f"short position is max: {position['short']['qty']}")
-                    # 如果是盈利的，平仓
-                    if position["short"]["upnl"] > 0:
+                    # 如果是盈利的，平仓 , 0.0006 * 2的手续费
+                    if (
+                        position["long"]["upnl"]
+                        > position["long"]["qty"]
+                        * position["long"]["price"]
+                        * 0.0006
+                        * 2
+                    ):
                         print(
                             f"close short: {last['close']}, profit: {position['short']['upnl']}"
                         )

@@ -1,5 +1,5 @@
 import argparse
-import logging
+from logger import logger
 from typing import List, Any
 from config import load_config
 import json
@@ -7,11 +7,6 @@ import os
 import datetime
 
 from exchanges import exchange
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s",
-)
 
 
 def download_candles(ex, symbol, timeframe, days=7):
@@ -31,14 +26,14 @@ def download_candles(ex, symbol, timeframe, days=7):
     # declare candles
     candles: List[Any] = []
     if not os.path.exists(candles_path):
-        logging.info(f"download data to {candles_path}")
+        logger.debug(f"download data to {candles_path}")
         os.makedirs(os.path.dirname(candles_path), exist_ok=True)
         candles = ex.get_all_candles(symbol, timeframe, since=since)
         with open(candles_path, "w") as f:
             json.dump(candles, f)
         return candles
     else:
-        logging.info(f"load data from {candles_path}")
+        logger.debug(f"load data from {candles_path}")
         with open(candles_path, "r") as f:
             candles = json.load(f)
 
@@ -53,7 +48,7 @@ def download_candles(ex, symbol, timeframe, days=7):
             # calculate since, +1 to avoid duplicate data
             since = exist_end + 1
 
-    logging.info(
+    logger.debug(
         f"downloading new data for [{symbol} {timeframe}] from {datetime.datetime.fromtimestamp(since/1000).strftime('%Y-%m-%d %H:%M:%S')}"
     )
 
@@ -62,12 +57,12 @@ def download_candles(ex, symbol, timeframe, days=7):
     if len(new_candles) > 0:
         candles.extend(new_candles)
         with open(candles_path, "w") as f:
-            logging.info(
+            logger.debug(
                 f"downloaded data for [{symbol}] with length {len(new_candles)}"
             )
             json.dump(candles, f)
     else:
-        logging.info(f"no new data for [{symbol}]")
+        logger.debug(f"no new data for [{symbol}]")
 
     return candles
 
@@ -95,9 +90,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logger.getLogger().setLevel(logger.DEBUG)
 
-    logging.info(f"load config: {args.config}")
+    logger.info(f"load config: {args.config}")
     config = load_config(args.config)
 
     ex = exchange.Exchange(config.exchange).get()

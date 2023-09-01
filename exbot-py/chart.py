@@ -1,7 +1,7 @@
 import argparse
 from datetime import timedelta
 import datetime
-import logging
+import os
 import time
 import pandas as pd
 from config import load_config
@@ -14,21 +14,18 @@ import talib
 from plotly.subplots import make_subplots
 from strategies import macd as s_macd
 from strategies import strategy
+from logger import logger
 
 
 pd.set_option("display.max_rows", 100)
 # candle data
 chartdata = {}
 chart_max_size = 500
-chart_display_size = 200
+chart_display_size = 500
 # 数据更新间隔（s）
 data_update_interval = 10
 # 数据更新时间 timestamp
 data_updated = 0.0
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s",
-)
 
 
 def get_chart(ex, symbol, timeframe, limit):
@@ -329,7 +326,7 @@ def get_charting(symbol, timeframe, ex):
     current_timestamp = time.time()
     if round(current_timestamp - data_updated) >= data_update_interval:
         data_updated = current_timestamp
-        logging.debug(f"update candles: {symbol}, {data_updated}")
+        logger.debug(f"update candles: {symbol}, {data_updated}")
         last_candles: list = ex.get_candles(symbol, timeframe, None, 2)
         df_last = pd.DataFrame(
             last_candles, columns=["date", "open", "high", "low", "close", "volume"]
@@ -368,6 +365,11 @@ def with_strategy(ex, strategy_name, df, args, fig=None):
 
             df = s.populate_buy_trend(df)
             df = s.populate_sell_trend(df)
+            df = s.populate_close_position(
+                df,
+                os.getenv("TAKE_PROFIT", "false") == "true",
+                os.getenv("STOP_LOSS", "true") == "true",
+            )
             side = strategy.amount_limit(
                 ex, df, args.symbol, args.amount, args.amount_max_limit
             )
@@ -441,9 +443,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+        logger.getLogger().setLevel(logger.DEBUG)
 
-    logging.info("exbot charting ...")
+    logger.info("exbot charting ...")
 
     config = load_config(args.config)
     ex = exchange.Exchange(config.exchange).get()
