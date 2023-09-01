@@ -79,9 +79,10 @@ class BitgetExchange:
         symbol: str,
         side: Literal["buy", "sell"],
         amount: float,
+        price: float,
         params: dict = {},
     ):
-        return self.exchange.create_order(symbol, "market", side, amount, params)
+        return self.exchange.create_order(symbol, "market", side, amount, None, params)
 
     def cancel_orders(self, symbol: str):
         try:
