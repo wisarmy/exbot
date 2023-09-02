@@ -17,9 +17,7 @@ pd.set_option("display.width", 1000)
 def update(ex, args):
     # 获取图表实时数据
     df = chart.get_charting(ex, args.symbol, args.timeframe)
-    df = with_strategy(
-        args.strategy, ex, df, args, os.getenv("TRADE", "true") == "true"
-    )
+    df = with_strategy(args.strategy, ex, df, args, args.debug == False)
     logger.debug(df)
     logger.info(
         f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'][-1]}]"
@@ -61,6 +59,8 @@ if __name__ == "__main__":
     )
     # add arg verbose
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
+    # add debug
+    parser.add_argument("--debug", action="store_true", help="debug mode")
     args = parser.parse_args()
 
     if args.verbose:
