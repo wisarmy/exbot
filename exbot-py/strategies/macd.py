@@ -114,7 +114,7 @@ class macd:
                         total_profit += profit
                     df.loc[index, "profit"] = profit
                     logger.debug(
-                        f"{'take profit' if profit > 0 else 'stop loss'} [macd_fall_4]: {index}, [{open_signal} {open_price} {row['close']}], {profit}"
+                        f"{'take profit' if profit > 0 else 'stop loss'} [x]: {index}, [{open_signal} {open_price} {row['close']}], {profit}"
                     )
                     if profit > 0:
                         df.loc[index, "take_profit"] = open_signal
