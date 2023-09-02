@@ -1,5 +1,5 @@
 import ccxt
-from logger import logger
+from core.logger import logger
 import time
 from ccxt.base.errors import RateLimitExceeded
 from typing import Literal

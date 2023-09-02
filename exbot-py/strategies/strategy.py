@@ -1,8 +1,7 @@
 import datetime
 from exchanges.bitget import BitgetExchange
 import pytz
-from logger import logger
-
+from core.logger import logger
 from collections import OrderedDict
 
 used_cache = OrderedDict()

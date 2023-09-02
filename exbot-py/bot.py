@@ -1,13 +1,14 @@
 import argparse
 import datetime
 import logging
+import os
 import time
 from config import load_config
-
+from core import chart
 from exchanges import exchange
-import chart
 import pandas as pd
-from logger import logger
+from core.logger import logger
+from strategies.manager import with_strategy
 
 pd.set_option("display.max_columns", None)
 pd.set_option("display.width", 1000)
@@ -15,9 +16,11 @@ pd.set_option("display.width", 1000)
 
 def update(ex, args):
     # 获取图表实时数据
-    df = chart.get_charting(args.symbol, args.timeframe, ex)
-    df_display = chart.with_strategy(ex, args.strategy, df, args)
-    logger.debug(df_display)
+    df = chart.get_charting(ex, args.symbol, args.timeframe)
+    df = with_strategy(
+        args.strategy, ex, df, args, os.getenv("TRADE", "true") == "true"
+    )
+    logger.debug(df)
     logger.info(
         f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'][-1]}]"
     )
@@ -61,7 +64,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose:
-        # logging.getLogger().setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
         pd.set_option("display.max_rows", None)
 

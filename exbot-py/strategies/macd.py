@@ -5,7 +5,7 @@ import pandas as pd  # noqa
 pd.options.mode.chained_assignment = None  # default='warn'
 from functools import reduce
 import numpy as np
-from logger import logger
+from core.logger import logger
 
 
 class macd:
