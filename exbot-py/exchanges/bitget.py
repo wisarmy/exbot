@@ -1,6 +1,5 @@
-import logging
 import ccxt
-import json
+from logger import logger
 import time
 from ccxt.base.errors import RateLimitExceeded
 from typing import Literal
@@ -59,7 +58,7 @@ class BitgetExchange:
                         }
                         open_orders.append(order_data)
         except Exception as e:
-            logging.warning(
+            logger.exception(
                 f"An unknown error occurred in get_open_orders_debug(): {e}"
             )
         return open_orders
@@ -88,17 +87,17 @@ class BitgetExchange:
         try:
             get_open_orders = self.get_open_orders(symbol)
             if len(get_open_orders) == 0:
-                print("No open orders to cancel.")
+                logger.info("No open orders to cancel.")
                 return
             ids = []
             for order in get_open_orders:
                 ids.append(order["id"])
                 # print(f"Canceling order: {order}")
                 # self.exchange.cancel_order(order['id'], symbol)
-            print(f"Canceling orders: {ids}")
+            logger.info(f"Canceling orders: {ids}")
             self.exchange.cancel_orders(ids, symbol)
         except Exception as e:
-            logging.warning(f"An unknown error occurred in cancel_orders(): {e}")
+            logger.exception(f"An unknown error occurred in cancel_orders(): {e}")
 
     # 平仓
     def close_position(self, symbol: str, side: Literal["buy", "sell"], amount: float):
@@ -107,7 +106,7 @@ class BitgetExchange:
                 symbol, side, amount, params={"reduceOnly": True}
             )
         except Exception as e:
-            logging.warning(f"An unknown error occurred in close_position(): {e}")
+            logger.exception(f"An unknown error occurred in close_position(): {e}")
 
     def get_current_candle(self, symbol: str, timeframe="1m", retries=3, delay=60):
         for _ in range(retries):
@@ -121,7 +120,9 @@ class BitgetExchange:
                 return current_candle
 
             except RateLimitExceeded:
-                print("Rate limit exceeded... sleeping for {} seconds".format(delay))
+                logger.exception(
+                    "Rate limit exceeded... sleeping for {} seconds".format(delay)
+                )
                 time.sleep(delay)
 
         raise RateLimitExceeded(
@@ -139,7 +140,9 @@ class BitgetExchange:
                 return ohlcv
 
             except RateLimitExceeded:
-                print("Rate limit exceeded... sleeping for {} seconds".format(delay))
+                logger.exception(
+                    "Rate limit exceeded... sleeping for {} seconds".format(delay)
+                )
                 time.sleep(delay)
 
         raise RateLimitExceeded(
@@ -204,9 +207,11 @@ class BitgetExchange:
                 if position["liquidationPrice"] is not None:
                     values[side]["liq_price"] = float(position["liquidationPrice"])
                 else:
-                    print(f"Warning: liquidationPrice is None for {side} position")
+                    logger.warning(
+                        f"Warning: liquidationPrice is None for {side} position"
+                    )
                     values[side]["liq_price"] = None
                 values[side]["entry_price"] = float(position["entryPrice"])
         except Exception as e:
-            logging.info(f"An unknown error occurred in fetch_position: {e}")
+            logger.exception(f"An unknown error occurred in fetch_position: {e}")
         return values

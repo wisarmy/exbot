@@ -18,7 +18,7 @@ def update(ex, args):
     df = chart.get_charting(args.symbol, args.timeframe, ex)
     df_display = chart.with_strategy(ex, args.strategy, df, args)
     logger.debug(df_display)
-    print(
+    logger.info(
         f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'][-1]}]"
     )
 
@@ -70,11 +70,11 @@ if __name__ == "__main__":
     config = load_config(args.config)
     ex = exchange.Exchange(config.exchange).get()
     ex.load_markets()
-    print(f"{ex.id()}, strategy: {args.strategy}")
+    logger.info(f"exchange: {ex.id()}, args: {args}")
 
     while True:
         try:
             update(ex, args)
         except Exception as e:
-            logging.warning(f"An unknown error occurred in update(): {e}")
+            logger.exception(f"An unknown error occurred in update(): {e}")
         time.sleep(args.interval)

@@ -97,6 +97,9 @@ class macd:
         profit = 0
         # 总收益
         total_profit = 0
+        # fee
+        fee_rate = 0.0012
+        fee = 0
 
         for index, row in df.iterrows():
             # 如果发现信号，就重置计数器
@@ -104,15 +107,15 @@ class macd:
                 # 交叉平仓
                 if is_closed == False:
                     if open_signal == "buy":
-                        profit = row["close"] - open_price
+                        profit = float(row["close"]) - open_price - fee
                         total_profit += profit
                     elif open_signal == "sell":
-                        profit = open_price - row["close"]
+                        profit = open_price - float(row["close"]) - fee
                         total_profit += profit
                     df.loc[index, "profit"] = profit
-                    # logger.debug(
-                    #     f"{'take profit' if profit > 0 else 'stop loss'} [macd_fall_4]: {index}, [{open_signal} {open_price} {row['close']}], {profit}"
-                    # )
+                    logger.debug(
+                        f"{'take profit' if profit > 0 else 'stop loss'} [macd_fall_4]: {index}, [{open_signal} {open_price} {row['close']}], {profit}"
+                    )
                     if profit > 0:
                         df.loc[index, "take_profit"] = open_signal
                         df.loc[index, "profit"] = profit
@@ -122,7 +125,8 @@ class macd:
 
                 # set open data
                 open_signal = row["signal"]
-                open_price = row["close"]
+                open_price = float(row["close"])
+                fee = open_price * fee_rate
                 is_closed = False
                 fall_nums = 0
                 before_macd = abs(row["macd"])
@@ -135,14 +139,14 @@ class macd:
             if fall_nums == 4:
                 if is_closed == False:
                     if open_signal == "buy":
-                        profit = row["close"] - open_price
+                        profit = float(row["close"]) - open_price - fee
                         total_profit += profit
                     elif open_signal == "sell":
-                        profit = open_price - row["close"]
+                        profit = open_price - float(row["close"]) - fee
                         total_profit += profit
-                    # logger.debug(
-                    #     f"{'take profit' if profit > 0 else 'stop loss'} [macd_fall_4]: {index}, [{open_signal} {open_price} {row['close']}], {profit}"
-                    # )
+                    logger.debug(
+                        f"{'take profit' if profit > 0 else 'stop loss'} [macd_fall_4]: {index}, [{open_signal} {open_price} {row['close']}], {profit}"
+                    )
                     if profit > 0:
                         if take_profit:
                             df.loc[index, "take_profit"] = open_signal
