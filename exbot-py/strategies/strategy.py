@@ -86,15 +86,15 @@ def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
     return False
 
 
-def handle_take_profit_fix_unpl(last, ex: BitgetExchange, symbol, position):
-    profit = float(os.getenv("TAKE_PROFIT_FIX_UNPL"))
-    if profit > 0:
+def handle_take_profit_fix_upnl(last, ex: BitgetExchange, symbol, position):
+    fix_upnl = float(os.getenv("TAKE_PROFIT_FIX_UPNL"))
+    if fix_upnl > 0:
         for side in ["short", "long"]:
             if position[side]["qty"] > 0:
                 upnl = position[side]["upnl"]
-                if upnl > profit:
+                if upnl > fix_upnl:
                     logger.info(
-                        f"take_profit_fix_unpl {side}: {last['close']}, profit: {profit}"
+                        f"take_profit_fix_upnl {side}: {last['close']}, profit: {upnl}, TP: {fix_upnl}"
                     )
                     order_side = "buy" if side == "short" else "sell"
                     ex.close_position(symbol, order_side, position[side]["qty"])
@@ -102,15 +102,15 @@ def handle_take_profit_fix_unpl(last, ex: BitgetExchange, symbol, position):
     return False
 
 
-def handle_stop_loss_fix_unpl(last, ex: BitgetExchange, symbol, position):
-    profit = float(os.getenv("STOP_LOSS_FIX_UNPL"))
-    if profit < 0:
+def handle_stop_loss_fix_upnl(last, ex: BitgetExchange, symbol, position):
+    fix_upnl = float(os.getenv("STOP_LOSS_FIX_UPNL"))
+    if fix_upnl < 0:
         for side in ["short", "long"]:
             if position[side]["qty"] > 0:
                 upnl = position[side]["upnl"]
-                if upnl < profit:
+                if upnl < fix_upnl:
                     logger.info(
-                        f"stop_loss_fix_unpl {side}: {last['close']}, profit: {profit}"
+                        f"stop_loss_fix_upnl {side}: {last['close']}, profit: {upnl}, SL: {fix_upnl}"
                     )
                     order_side = "buy" if side == "short" else "sell"
                     ex.close_position(symbol, order_side, position[side]["qty"])
@@ -139,12 +139,12 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
         # 止盈止损信号
         if handle_take_profit(last, ex, symbol, position):
             set_used_cache(last_date, 1)
-        elif handle_take_profit_fix_unpl(last, ex, symbol, position):
+        elif handle_take_profit_fix_upnl(last, ex, symbol, position):
             set_used_cache(last_date, 1)
 
         if handle_stop_loss(last, ex, symbol, position):
             set_used_cache(last_date, 1)
-        elif handle_stop_loss_fix_unpl(last, ex, symbol, position):
+        elif handle_stop_loss_fix_upnl(last, ex, symbol, position):
             set_used_cache(last_date, 1)
 
         return side
