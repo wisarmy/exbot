@@ -88,32 +88,46 @@ def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
 
 def handle_take_profit_fix_upnl(last, ex: BitgetExchange, symbol, position):
     fix_upnl = float(os.getenv("TAKE_PROFIT_FIX_UPNL", 0))
+    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
     if fix_upnl > 0:
         for side in ["short", "long"]:
-            if position[side]["qty"] > 0:
+            position_amount = position[side]["qty"]
+            close_amount = min(
+                input_amount if input_amount > 0 else position_amount,
+                position_amount,
+            )
+            if close_amount > 0:
                 upnl = position[side]["upnl"]
                 if upnl > fix_upnl:
+                    profit = upnl * (close_amount / position_amount)
                     logger.info(
-                        f"take_profit_fix_upnl {side}: {last['close']}, profit: {upnl}, TP: {fix_upnl}"
+                        f"take_profit_fix_upnl {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], TP: {fix_upnl}"
                     )
                     order_side = "buy" if side == "short" else "sell"
-                    ex.close_position(symbol, order_side, position[side]["qty"])
+                    ex.close_position(symbol, order_side, close_amount)
         return True
     return False
 
 
 def handle_stop_loss_fix_upnl(last, ex: BitgetExchange, symbol, position):
     fix_upnl = float(os.getenv("STOP_LOSS_FIX_UPNL", 0))
+    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
     if fix_upnl < 0:
         for side in ["short", "long"]:
-            if position[side]["qty"] > 0:
+            position_amount = position[side]["qty"]
+            close_amount = min(
+                input_amount if input_amount > 0 else position_amount,
+                position_amount,
+            )
+            if close_amount > 0:
                 upnl = position[side]["upnl"]
                 if upnl < fix_upnl:
+                    profit = upnl * (close_amount / position_amount)
                     logger.info(
-                        f"stop_loss_fix_upnl {side}: {last['close']}, profit: {upnl}, SL: {fix_upnl}"
+                        f"stop_loss_fix_upnl {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], SL: {fix_upnl}"
                     )
                     order_side = "buy" if side == "short" else "sell"
-                    ex.close_position(symbol, order_side, position[side]["qty"])
+                    ex.close_position(symbol, order_side, close_amount)
         return True
     return False
 
