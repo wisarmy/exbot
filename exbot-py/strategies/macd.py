@@ -158,5 +158,5 @@ class macd:
                             df.loc[index, "profit"] = profit
                             is_closed = True
 
-        logger.info(f"backtesting total profit: {total_profit}")
+        logger.info(f"backtesting total profit: {total_profit/open_price}")
         return df
