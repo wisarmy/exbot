@@ -1,4 +1,5 @@
 import argparse
+import logging
 from core.candle import get_candles
 from core.logger import logger
 from config import load_config
@@ -27,7 +28,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose:
-        logger.getLogger().setLevel(logger.DEBUG)
+        logger.setLevel(logging.DEBUG)
 
     logger.info(f"load config: {args.config}")
     config = load_config(args.config)

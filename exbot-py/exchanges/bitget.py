@@ -191,6 +191,7 @@ class BitgetExchange:
         }
         try:
             data = self.exchange.fetch_position(symbol)
+            logger.debug(f"fetch_position: {data}")
             for position in data:
                 # 判断是否有持仓
                 if position["entryPrice"] is None:

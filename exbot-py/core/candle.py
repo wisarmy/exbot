@@ -20,6 +20,7 @@ def get_candles(ex, symbol, timeframe, days=7):
     )
     # days to since
     since = ex.exchange.milliseconds() - days * 24 * 60 * 60 * 1000
+    data_from = since
 
     # declare candles
     candles: List[Any] = []
@@ -61,5 +62,7 @@ def get_candles(ex, symbol, timeframe, days=7):
             json.dump(candles, f)
     else:
         logger.debug(f"no new data for [{symbol}]")
+
+    candles = [x for x in candles if x[0] >= data_from]
 
     return candles
