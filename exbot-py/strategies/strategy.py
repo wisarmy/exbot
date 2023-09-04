@@ -87,7 +87,7 @@ def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
 
 
 def handle_take_profit_fix_upnl(last, ex: BitgetExchange, symbol, position):
-    fix_upnl = float(os.getenv("TAKE_PROFIT_FIX_UPNL"), 0)
+    fix_upnl = float(os.getenv("TAKE_PROFIT_FIX_UPNL", 0))
     if fix_upnl > 0:
         for side in ["short", "long"]:
             if position[side]["qty"] > 0:
