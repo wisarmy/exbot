@@ -1,7 +1,6 @@
 import argparse
 import datetime
 import logging
-import os
 import time
 from config import load_config
 from core import chart

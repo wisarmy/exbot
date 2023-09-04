@@ -3,10 +3,13 @@ import os
 from exchanges.bitget import BitgetExchange
 import pytz
 from core.logger import logger
+from core.logger import setup_datalogger
 from collections import OrderedDict
 
 used_cache = OrderedDict()
 cache_size = 128
+# symbol, short_qty, short_realised, short_upnl, long_qty, long_realised, long_upnl
+position_logger = setup_datalogger("position.csv")
 
 
 def set_used_cache(key, value):
@@ -139,6 +142,9 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     # 获取当前仓位
     position = ex.fetch_position(symbol)
     # logger.debug(f"position: {position}")
+    position_logger.info(
+        f"{symbol}, {position['short']['qty']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['realised']}, {position['long']['upnl']}"
+    )
 
     logger.warning(
         f"position: short profit: {position['short']['upnl']}, long profit: {position['long']['upnl']}"

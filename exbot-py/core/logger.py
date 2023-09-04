@@ -50,3 +50,14 @@ handler.setFormatter(colored_formatter)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 logger.addHandler(handler)
+
+
+def setup_datalogger(log_file):
+    datalogger = logging.getLogger("data_logger")
+    datalogger.setLevel(logging.INFO)
+    formatter = logging.Formatter("%(asctime)s, %(message)s")
+    file_handler = logging.FileHandler(f"logs/{log_file}")
+    file_handler.setFormatter(formatter)
+    datalogger.addHandler(file_handler)
+
+    return datalogger
