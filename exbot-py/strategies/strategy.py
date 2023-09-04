@@ -186,7 +186,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 )
                 ex.close_position(symbol, "buy", amount)
                 # 如果全部平仓，反向开单
-                if amount == position["short"]["qty"]:
+                if amount >= position["short"]["qty"]:
                     # 开多
                     logger.info(
                         f"all short position have been closed. open long: {last['close']}"
@@ -223,7 +223,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 )
                 ex.close_position(symbol, "sell", amount)
                 # 如果全部平仓，反向开单
-                if amount == position["long"]["qty"]:
+                if amount >= position["long"]["qty"]:
                     # 开多
                     logger.info(
                         f"all long position have been closed. open short: {last['close']}"
