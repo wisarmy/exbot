@@ -31,8 +31,8 @@ class macd:
     use_sell_signal = True
     sell_profit_only = False
 
-    def populate_indicators(self, dataframe: DataFrame) -> DataFrame:
-        close_prices = dataframe["close"].values  # 获取收盘价的数据
+    def populate_indicators(self, df: DataFrame) -> DataFrame:
+        close_prices = df["close"].values  # 获取收盘价的数据
         fast_period = 12
         slow_period = 26
         signal_period = 9
@@ -40,50 +40,51 @@ class macd:
             close_prices, fast_period, slow_period, signal_period
         )
 
-        dataframe["dif"] = np.around(macd, decimals=6)
-        dataframe["dea"] = np.around(signal, decimals=6)
-        dataframe["macd"] = np.around(hist, decimals=6)
+        df["dif"] = np.around(macd, decimals=6)
+        df["dea"] = np.around(signal, decimals=6)
+        df["macd"] = np.around(hist, decimals=6)
         # golden cross
-        dataframe["cross"] = np.where(
-            (dataframe["dif"] > dataframe["dea"])
-            & (dataframe["dif"].shift(1) < dataframe["dea"].shift(1)),
+        df["cross"] = np.where(
+            (df["dif"] > df["dea"]) & (df["dif"].shift(1) < df["dea"].shift(1)),
             1,
             0,
         )
         # dead cross
-        dataframe["cross"] = np.where(
-            (dataframe["dif"] < dataframe["dea"])
-            & (dataframe["dif"].shift(1) > dataframe["dea"].shift(1)),
+        df["cross"] = np.where(
+            (df["dif"] < df["dea"]) & (df["dif"].shift(1) > df["dea"].shift(1)),
             -1,
-            dataframe["cross"],
+            df["cross"],
         )
 
-        return dataframe
+        return df
 
-    def populate_buy_trend(self, dataframe: DataFrame) -> DataFrame:
+    def populate_buy_trend(self, df: DataFrame) -> DataFrame:
+        df["signal"] = pd.Series(dtype="str")
         conditions = []
-
-        conditions.append(dataframe["cross"] == 1)
+        conditions.append(df["cross"] == 1)
 
         if conditions:
-            dataframe.loc[reduce(lambda x, y: x & y, conditions), "buy"] = 1
-            dataframe.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "buy"
+            df.loc[reduce(lambda x, y: x & y, conditions), "buy"] = 1
+            df.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "buy"
 
-        return dataframe
+        return df
 
-    def populate_sell_trend(self, dataframe: DataFrame) -> DataFrame:
+    def populate_sell_trend(self, df: DataFrame) -> DataFrame:
+        df["signal"] = pd.Series(dtype="str")
         conditions = []
-        conditions.append(dataframe["cross"] == -1)
+        conditions.append(df["cross"] == -1)
 
         if conditions:
-            dataframe.loc[reduce(lambda x, y: x & y, conditions), "sell"] = 1
-            dataframe.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "sell"
+            df.loc[reduce(lambda x, y: x & y, conditions), "sell"] = 1
+            df.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "sell"
 
-        return dataframe
+        return df
 
     def populate_close_position(
         self, df: DataFrame, take_profit=True, stop_loss=True
     ) -> DataFrame:
+        df["take_profit"] = pd.Series(dtype="str")
+        df["stop_loss"] = pd.Series(dtype="str")
         # macd绝对值 三连跌止盈
         fall_nums = 0
         before_macd = 0

@@ -19,7 +19,7 @@ def update(ex, args):
     df = with_strategy(args.strategy, ex, df, args, args.debug == False)
     logger.debug(df)
     logger.info(
-        f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'][-1]}]"
+        f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'].iloc[-1]}]"
     )
 
 
