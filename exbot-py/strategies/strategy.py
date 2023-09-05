@@ -154,7 +154,7 @@ def handle_take_profit_fix_price_urate(last, ex: BitgetExchange, symbol, positio
                     if side == "long"
                     else open_price * (1 - fix_urate)
                 )
-                logger.info(
+                logger.debug(
                     f"# take_profit_fix_price_urate {side}: close_price: {close_price}, close_amount: {close_amount}"
                 )
                 if (side == "long" and price > close_price) or (
@@ -189,7 +189,7 @@ def handle_stop_loss_fix_price_urate(last, ex: BitgetExchange, symbol, position)
                     if side == "short"
                     else open_price * (1 - fix_urate)
                 )
-                logger.info(
+                logger.debug(
                     f"# stop_loss_fix_price_urate {side}: close_price: {close_price}, close_amount: {close_amount}"
                 )
                 if (side == "long" and price < close_price) or (
