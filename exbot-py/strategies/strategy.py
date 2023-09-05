@@ -135,6 +135,74 @@ def handle_stop_loss_fix_upnl(last, ex: BitgetExchange, symbol, position):
     return False
 
 
+def handle_take_profit_fix_urate(last, ex: BitgetExchange, symbol, position):
+    fix_urate = float(os.getenv("TAKE_PROFIT_FIX_URATE", 0))
+    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    if fix_urate > 0:
+        for side in ["short", "long"]:
+            position_amount = position[side]["qty"]
+            close_amount = min(
+                input_amount if input_amount > 0 else position_amount,
+                position_amount,
+            )
+            price = float(last["close"])
+            upnl = position[side]["upnl"]
+            if close_amount > 0:
+                close_price = (
+                    price * (1 + fix_urate)
+                    if side == "long"
+                    else price * (1 - fix_urate)
+                )
+                logger.info(
+                    f"# take_profit_fix_urate {side}: close_price: {close_price}, close_amount: {close_amount}"
+                )
+                if (side == "long" and close_price > price) or (
+                    side == "short" and close_price < price
+                ):
+                    profit = upnl * (close_amount / position_amount)
+                    logger.info(
+                        f"take_profit_fix_urate {side}: {price}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], urate: {fix_urate}"
+                    )
+                    order_side = "buy" if side == "short" else "sell"
+                    ex.close_position(symbol, order_side, close_amount)
+        return True
+    return False
+
+
+def handle_stop_loss_fix_urate(last, ex: BitgetExchange, symbol, position):
+    fix_urate = float(os.getenv("STOP_LOSS_FIX_URATE", 0))
+    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    if fix_urate > 0:
+        for side in ["short", "long"]:
+            position_amount = position[side]["qty"]
+            close_amount = min(
+                input_amount if input_amount > 0 else position_amount,
+                position_amount,
+            )
+            price = float(last["close"])
+            upnl = position[side]["upnl"]
+            if close_amount > 0:
+                close_price = (
+                    price * (1 + fix_urate)
+                    if side == "short"
+                    else price * (1 - fix_urate)
+                )
+                logger.info(
+                    f"# stop_loss_fix_urate {side}: close_price: {close_price}, close_amount: {close_amount}"
+                )
+                if (side == "long" and close_price < price) or (
+                    side == "short" and close_price > price
+                ):
+                    profit = upnl * (close_amount / position_amount)
+                    logger.info(
+                        f"stop_loss_fix_urate {side}: {price}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], urate: {fix_urate}"
+                    )
+                    order_side = "buy" if side == "short" else "sell"
+                    ex.close_position(symbol, order_side, close_amount)
+        return True
+    return False
+
+
 # 数量限制
 def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     side = None
@@ -161,10 +229,14 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
             set_used_cache(last_date, 1)
         elif handle_take_profit_fix_upnl(last, ex, symbol, position):
             set_used_cache(last_date, 1)
+        elif handle_take_profit_fix_urate(last, ex, symbol, position):
+            set_used_cache(last_date, 1)
 
         if handle_stop_loss(last, ex, symbol, position):
             set_used_cache(last_date, 1)
         elif handle_stop_loss_fix_upnl(last, ex, symbol, position):
+            set_used_cache(last_date, 1)
+        elif handle_stop_loss_fix_urate(last, ex, symbol, position):
             set_used_cache(last_date, 1)
 
         return side
