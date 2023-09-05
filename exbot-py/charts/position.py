@@ -27,7 +27,7 @@ if __name__ == "__main__":
     fig.layout.height = 760
     fig.layout.dragmode = "pan"
     # add -0.382 line
-    for refline in [-0.382, 1]:
+    for refline in [-0.236, -0.382, 0.618, 0.786, 1]:
         fig.add_trace(
             go.Scatter(
                 x=df.index,
