@@ -1,4 +1,4 @@
-ccxt==4.0.3
+ccxt==4.0.82
 pydantic
 mplfinance
 freqtrade
