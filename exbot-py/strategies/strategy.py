@@ -213,6 +213,10 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     # 获取当前仓位
     position = ex.fetch_position(symbol)
     # logger.debug(f"position: {position}")
+    position_logger.info(
+        f"{symbol}, {position['short']['qty']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['realised']}, {position['long']['upnl']}"
+    )
+
     logger.warning(
         f"position: short profit: {position['short']['upnl']}, long profit: {position['long']['upnl']}"
     )
