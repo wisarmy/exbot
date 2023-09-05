@@ -209,11 +209,12 @@ def handle_stop_loss_fix_price_urate(last, ex: BitgetExchange, symbol, position)
 def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     side = None
     last, last_date = get_signal_record(df)
+    real, real_date = df.iloc[-1], df.index[-1]
     # 获取当前仓位
     position = ex.fetch_position(symbol)
     # logger.debug(f"position: {position}")
     logger.warning(
-        f"position: short profit: [{position['short']['upnl']}], long profit: [{position['long']['upnl']}]"
+        f"position: short profit: {position['short']['upnl']}, long profit: {position['long']['upnl']}"
     )
 
     # 记录已经使用过
@@ -225,17 +226,17 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
         # 止盈止损信号
         if handle_take_profit(last, ex, symbol, position):
             set_used_cache(last_date, 1)
-        elif handle_take_profit_fix_upnl(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
-        elif handle_take_profit_fix_price_urate(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
+        elif handle_take_profit_fix_upnl(real, ex, symbol, position):
+            set_used_cache(real_date, 1)
+        elif handle_take_profit_fix_price_urate(real, ex, symbol, position):
+            set_used_cache(real_date, 1)
 
         if handle_stop_loss(last, ex, symbol, position):
             set_used_cache(last_date, 1)
-        elif handle_stop_loss_fix_upnl(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
-        elif handle_stop_loss_fix_price_urate(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
+        elif handle_stop_loss_fix_upnl(real, ex, symbol, position):
+            set_used_cache(real_date, 1)
+        elif handle_stop_loss_fix_price_urate(real, ex, symbol, position):
+            set_used_cache(real_date, 1)
 
         return side
 
