@@ -211,7 +211,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     position = ex.fetch_position(symbol)
     # logger.debug(f"position: {position}")
     logger.warning(
-        f"position: short {position['short']['qty']} profit: {position['short']['upnl']}, long {position['long']['qty']} profit: {position['long']['upnl']}"
+        f"position: short {position['short']['qty']} profit: [{position['short']['upnl']}], long {position['long']['qty']} profit: [{position['long']['upnl']}]"
     )
 
     # 记录已经使用过
@@ -269,18 +269,18 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 else:
                     # 超出最大仓位
                     logger.info(f"long position is max: {position['long']['qty']}")
-                    # 如果是盈利的，平仓 , 0.0006 * 2的手续费
-                    if (
-                        position["long"]["upnl"]
-                        > position["long"]["qty"]
-                        * position["long"]["price"]
-                        * 0.0006
-                        * 2
-                    ):
-                        logger.info(
-                            f"close long: {last['close']}, profit: {position['long']['upnl']}"
-                        )
-                        ex.close_position(symbol, "sell", position["long"]["qty"])
+                    # # 如果是盈利的，平仓 , 0.0006 * 2的手续费
+                    # if (
+                    #     position["long"]["upnl"]
+                    #     > position["long"]["qty"]
+                    #     * position["long"]["price"]
+                    #     * 0.0006
+                    #     * 2
+                    # ):
+                    #     logger.info(
+                    #         f"close long: {last['close']}, profit: {position['long']['upnl']}"
+                    #     )
+                    #     ex.close_position(symbol, "sell", position["long"]["qty"])
 
         elif side == "sell":
             # 判断是否有多仓
@@ -305,18 +305,18 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
                 else:
                     # 超出最大仓位
                     logger.info(f"short position is max: {position['short']['qty']}")
-                    # 如果是盈利的，平仓 , 0.0006 * 2的手续费
-                    if (
-                        position["long"]["upnl"]
-                        > position["long"]["qty"]
-                        * position["long"]["price"]
-                        * 0.0006
-                        * 2
-                    ):
-                        logger.info(
-                            f"close short: {last['close']}, profit: {position['short']['upnl']}"
-                        )
-                        ex.close_position(symbol, "buy", position["short"]["qty"])
+                    # # 如果是盈利的，平仓 , 0.0006 * 2的手续费
+                    # if (
+                    #     position["long"]["upnl"]
+                    #     > position["long"]["qty"]
+                    #     * position["long"]["price"]
+                    #     * 0.0006
+                    #     * 2
+                    # ):
+                    #     logger.info(
+                    #         f"close short: {last['close']}, profit: {position['short']['upnl']}"
+                    #     )
+                    #     ex.close_position(symbol, "buy", position["short"]["qty"])
 
     except Exception as e:
         logger.exception(f"An unknown error occurred in amount_limit(): {e}")
