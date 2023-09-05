@@ -46,6 +46,6 @@ if __name__ == "__main__":
     ex.load_markets()
     logger.info(f"exchange: {ex.id()}, args: {args}")
     # 获取图表实时数据
-    df = chart.get_charting(ex, args.symbol, args.timeframe)
+    df = chart.get_charting(ex, args.symbol, args.timeframe, args.days)
     df = with_strategy(args.strategy, ex, df, args, False)
-    logger.debug(df)
+    logger.info(df)

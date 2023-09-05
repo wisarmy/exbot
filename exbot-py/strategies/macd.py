@@ -59,7 +59,9 @@ class macd:
         return df
 
     def populate_buy_trend(self, df: DataFrame) -> DataFrame:
-        df["signal"] = pd.Series(dtype="str")
+        if "signal" not in df:
+            df["signal"] = pd.Series(dtype="str")
+
         conditions = []
         conditions.append(df["cross"] == 1)
 
@@ -70,7 +72,9 @@ class macd:
         return df
 
     def populate_sell_trend(self, df: DataFrame) -> DataFrame:
-        df["signal"] = pd.Series(dtype="str")
+        if "signal" not in df:
+            df["signal"] = pd.Series(dtype="str")
+
         conditions = []
         conditions.append(df["cross"] == -1)
 
