@@ -1,6 +1,6 @@
 ccxt==4.0.82
 pydantic
-mplfinance
-freqtrade
+pandas
+ta-lib
 plotly
 dash
