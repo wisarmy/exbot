@@ -11,6 +11,7 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+  
   # Maintain dependencies for python
   - package-ecosystem: "pip"
     directory: "/exbot-py/"
