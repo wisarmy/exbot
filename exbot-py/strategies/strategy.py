@@ -147,7 +147,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     )
 
     logger.warning(
-        f"position: short profit: {position['short']['upnl']}, long profit: {position['long']['upnl']}"
+        f"position: short profit[{position['short']['qty']}]: {position['short']['upnl']}, long profit[{position['long']['qty']}]: {position['long']['upnl']}"
     )
 
     # 记录已经使用过
