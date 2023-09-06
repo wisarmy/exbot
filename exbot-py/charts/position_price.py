@@ -72,6 +72,12 @@ if __name__ == "__main__":
             1 - stop_loss_urate
         )
 
+        df["entry_price"] = np.where(
+            df["short_qty"] > 0,
+            df["short_entry_price"],
+            df["long_entry_price"],
+        )
+
         df["take_profit_close_price"] = np.where(
             df["short_qty"] > 0,
             df["short_take_profit_close_price"],
@@ -82,6 +88,7 @@ if __name__ == "__main__":
             df["short_stop_loss_close_price"],
             df["long_stop_loss_close_price"],
         )
+
         for name, group in df.groupby("symbol"):
             fig.add_trace(
                 go.Scatter(
@@ -89,6 +96,14 @@ if __name__ == "__main__":
                     y=df["price"],
                     mode="lines",
                     name=name + "_price",
+                )
+            )
+            fig.add_trace(
+                go.Scatter(
+                    x=df.index,
+                    y=df["entry_price"],
+                    mode="lines",
+                    name=name + "_entry_price",
                 )
             )
 
