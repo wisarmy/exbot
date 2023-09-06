@@ -108,7 +108,7 @@ def handle_take_profit_fix_upnl(last, ex: BitgetExchange, symbol, position):
                     )
                     order_side = "buy" if side == "short" else "sell"
                     ex.close_position(symbol, order_side, close_amount)
-        return True
+                    return True
     return False
 
 
@@ -131,7 +131,7 @@ def handle_stop_loss_fix_upnl(last, ex: BitgetExchange, symbol, position):
                     )
                     order_side = "buy" if side == "short" else "sell"
                     ex.close_position(symbol, order_side, close_amount)
-        return True
+                    return True
     return False
 
 
@@ -166,7 +166,7 @@ def handle_take_profit_fix_price_urate(last, ex: BitgetExchange, symbol, positio
                     )
                     order_side = "buy" if side == "short" else "sell"
                     ex.close_position(symbol, order_side, close_amount)
-        return True
+                    return True
     return False
 
 
@@ -201,7 +201,7 @@ def handle_stop_loss_fix_price_urate(last, ex: BitgetExchange, symbol, position)
                     )
                     order_side = "buy" if side == "short" else "sell"
                     ex.close_position(symbol, order_side, close_amount)
-        return True
+                    return True
     return False
 
 
