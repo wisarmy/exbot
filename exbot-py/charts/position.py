@@ -84,7 +84,7 @@ def fig_position_price(df):
         fig.add_trace(
             go.Scatter(
                 x=df.index,
-                y=df["entry_price"],
+                y=np.where(df["entry_price"] == 0, np.nan, df["entry_price"]),
                 mode="lines",
                 line=dict(dash="dash", color="grey", width=1),
                 name=name + "_entry_price",
@@ -109,7 +109,11 @@ def fig_position_price(df):
         fig.add_trace(
             go.Scatter(
                 x=group.index,
-                y=group["take_profit_close_price"],
+                y=np.where(
+                    df["take_profit_close_price"] == 0,
+                    np.nan,
+                    df["take_profit_close_price"],
+                ),
                 mode="lines",
                 line=dict(dash="dash", color="green", width=1),
                 name=name + "_take_profit_close_price",
@@ -133,7 +137,11 @@ def fig_position_price(df):
         fig.add_trace(
             go.Scatter(
                 x=group.index,
-                y=group["stop_loss_close_price"],
+                y=np.where(
+                    df["stop_loss_close_price"] == 0,
+                    np.nan,
+                    df["stop_loss_close_price"],
+                ),
                 mode="lines",
                 line=dict(dash="dash", color="red", width=1),
                 name=name + "_stop_loss_close_price",
