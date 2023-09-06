@@ -55,32 +55,48 @@ class macd:
             -1,
             df["cross"],
         )
-
+        df["close_pct_change"] = df["close"].pct_change()
         return df
 
     def populate_buy_trend(self, df: DataFrame) -> DataFrame:
         if "signal" not in df:
             df["signal"] = pd.Series(dtype="str")
+            df["signal_removed"] = pd.Series(dtype="str")
 
         conditions = []
         conditions.append(df["cross"] == 1)
 
         if conditions:
             df.loc[reduce(lambda x, y: x & y, conditions), "buy"] = 1
+            # update signals that prices have big rise
+            conditions.append(df["close_pct_change"] <= 0.004)
             df.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "buy"
+            df["signal_removed"] = np.where(
+                (df["buy"] == 1) & (df["close_pct_change"] > 0.004),
+                "buy_rise",
+                df["signal_removed"],
+            )
 
         return df
 
     def populate_sell_trend(self, df: DataFrame) -> DataFrame:
         if "signal" not in df:
             df["signal"] = pd.Series(dtype="str")
+            df["signal_removed"] = pd.Series(dtype="str")
 
         conditions = []
         conditions.append(df["cross"] == -1)
 
         if conditions:
             df.loc[reduce(lambda x, y: x & y, conditions), "sell"] = 1
+            conditions.append(df["close_pct_change"] >= -0.004)
             df.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "sell"
+            # update signals that prices have big fall
+            df["signal_removed"] = np.where(
+                (df["sell"] == 1) & (df["close_pct_change"] < -0.004),
+                "sell_fall",
+                df["signal_removed"],
+            )
 
         return df
 
