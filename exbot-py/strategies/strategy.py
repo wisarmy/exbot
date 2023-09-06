@@ -8,7 +8,7 @@ from collections import OrderedDict
 
 used_cache = OrderedDict()
 cache_size = 128
-# symbol, short_qty, short_realised, short_upnl, long_qty, long_realised, long_upnl
+# symbol, price, short_qty, short_entry_price, short_realised, short_upnl, long_qty, long_entry_price, long_realised, long_upnl
 position_logger = setup_datalogger("position.csv")
 
 
@@ -214,7 +214,7 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     position = ex.fetch_position(symbol)
     # logger.debug(f"position: {position}")
     position_logger.info(
-        f"{symbol}, {position['short']['qty']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['realised']}, {position['long']['upnl']}"
+        f"{symbol}, {real['close']}, {position['short']['qty']}, {position['short']['entry_price']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['entry_price']}, {position['long']['realised']}, {position['long']['upnl']}"
     )
 
     logger.warning(

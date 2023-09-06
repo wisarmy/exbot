@@ -12,17 +12,19 @@ if __name__ == "__main__":
             "date",
             "ms",
             "symbol",
+            "price",
             "short_qty",
+            "short_entry_price",
             "short_realised",
             "short_upnl",
             "long_qty",
+            "long_entry_price",
             "long_realised",
             "long_upnl",
         ],
         index_col=0,
     )
     print(df)
-    # symbol, short_qty, short_realised, short_upnl, long_qty, long_realised, long_upnl
     fig = go.Figure()
     fig.layout.height = 760
     fig.layout.dragmode = "pan"
