@@ -13,7 +13,7 @@ position_logger = setup_datalogger("position.csv")
 
 
 def set_used_cache(key, value, cache_type=""):
-    key = cache_type + key
+    key = f"{cache_type}_{key}"
     used_cache[key] = value
     if len(used_cache) > cache_size:
         # 去除最旧的键值
@@ -21,7 +21,7 @@ def set_used_cache(key, value, cache_type=""):
 
 
 def get_used_cache(key, cache_type=""):
-    key = cache_type + key
+    key = f"{cache_type}_{key}"
     return used_cache.get(key)
 
 
