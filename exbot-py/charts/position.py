@@ -1,4 +1,5 @@
 import argparse
+import os
 import numpy as np
 import pandas as pd
 from dash import Dash, dcc, html, Output, Input
@@ -41,8 +42,8 @@ def fig_position_upnl(df):
 
 def fig_position_price(df):
     fig = go.Figure()
-    take_profit_urate = 0.00786
-    stop_loss_urate = 0.00382
+    take_profit_urate = float(os.getenv("TAKE_PROFIT_FIX_PRICE_URATE", 0.00786))
+    stop_loss_urate = float(os.getenv("STOP_LOSS_FIX_PRICE_URATE", 0.00382))
     # short
     df["short_take_profit_close_price"] = df["short_entry_price"] * (
         1 - take_profit_urate
