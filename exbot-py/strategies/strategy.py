@@ -222,21 +222,21 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     )
 
     # 记录已经使用过
-    if used_cache.get(last_date) == 1:
+    if used_cache.get(last_date) == 1 or used_cache.get(real_date) == 1:
         return side
 
     side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
     if side is None:
         # 止盈止损信号
-        if handle_take_profit(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
+        if handle_take_profit(real, ex, symbol, position):
+            set_used_cache(real_date, 1)
         elif handle_take_profit_fix_upnl(real, ex, symbol, position):
             set_used_cache(real_date, 1)
         elif handle_take_profit_fix_price_urate(real, ex, symbol, position):
             set_used_cache(real_date, 1)
 
-        if handle_stop_loss(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
+        if handle_stop_loss(real, ex, symbol, position):
+            set_used_cache(real_date, 1)
         elif handle_stop_loss_fix_upnl(real, ex, symbol, position):
             set_used_cache(real_date, 1)
         elif handle_stop_loss_fix_price_urate(real, ex, symbol, position):
