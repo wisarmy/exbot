@@ -57,41 +57,62 @@ def get_signal_record(df, threshold=None, ref_time=None):
     return df.iloc[index], df.index[index]
 
 
-def handle_take_profit(last, ex: BitgetExchange, symbol, position):
-    if last["take_profit"] == "sell":
-        if position["short"]["qty"] > 0:
-            logger.info(
-                f"take_profit short: {last['close']}, profit: {position['short']['upnl']}"
-            )
-            ex.close_position(symbol, "buy", position["short"]["qty"])
-            return True
-    elif last["take_profit"] == "buy":
-        if position["long"]["qty"] > 0:
-            logger.info(
-                f"take_profit long: {last['close']}, profit: {position['long']['upnl']}"
-            )
-            ex.close_position(symbol, "sell", position["long"]["qty"])
-            return True
+def signal_to_side(signal):
+    if signal == "buy":
+        return "long"
+    elif signal == "sell":
+        return "short"
+    else:
+        return None
 
+
+def handle_take_profit(last, ex: BitgetExchange, symbol, position):
+    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    hold_side = signal_to_side(last["take_profit"])
+    if hold_side is None:
+        return False
+
+    for side in ["short", "long"]:
+        position_amount = position[side]["qty"]
+        close_amount = min(
+            input_amount if input_amount > 0 else position_amount,
+            position_amount,
+        )
+        if close_amount > 0:
+            upnl = position[side]["upnl"]
+            profit = upnl * (close_amount / position_amount)
+            if hold_side == side:
+                order_side = "buy" if hold_side == "short" else "sell"
+                logger.info(
+                    f"take_profit {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: {profit}"
+                )
+                ex.close_position(symbol, order_side, close_amount)
+                return True
     return False
 
 
 def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
-    if last["stop_loss"] == "sell":
-        if position["short"]["qty"] > 0:
-            logger.info(
-                f"stop_loss short: {last['close']}, profit: {position['short']['upnl']}"
-            )
-            ex.close_position(symbol, "buy", position["short"]["qty"])
-            return True
-    elif last["stop_loss"] == "buy":
-        if position["long"]["qty"] > 0:
-            logger.info(
-                f"stop_loss long: {last['close']}, profit: {position['long']['upnl']}"
-            )
-            ex.close_position(symbol, "sell", position["long"]["qty"])
-            return True
+    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    hold_side = signal_to_side(last["stop_loss"])
+    if hold_side is None:
+        return False
 
+    for side in ["short", "long"]:
+        position_amount = position[side]["qty"]
+        close_amount = min(
+            input_amount if input_amount > 0 else position_amount,
+            position_amount,
+        )
+        if close_amount > 0:
+            upnl = position[side]["upnl"]
+            profit = upnl * (close_amount / position_amount)
+            if hold_side == side:
+                order_side = "buy" if hold_side == "short" else "sell"
+                logger.info(
+                    f"stop_loss {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: {profit}"
+                )
+                ex.close_position(symbol, order_side, close_amount)
+                return True
     return False
 
 
@@ -234,15 +255,15 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
     if side is None:
         # 止盈止损信号
-        if handle_take_profit(real, ex, symbol, position):
-            set_used_cache(real_date, 1, "real")
+        if handle_take_profit(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "real")
         elif handle_take_profit_fix_upnl(real, ex, symbol, position):
             set_used_cache(real_date, 1, "real")
         elif handle_take_profit_fix_price_urate(real, ex, symbol, position):
             set_used_cache(real_date, 1, "real")
 
-        if handle_stop_loss(real, ex, symbol, position):
-            set_used_cache(real_date, 1, "real")
+        if handle_stop_loss(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "real")
         elif handle_stop_loss_fix_upnl(real, ex, symbol, position):
             set_used_cache(real_date, 1, "real")
         elif handle_stop_loss_fix_price_urate(real, ex, symbol, position):
