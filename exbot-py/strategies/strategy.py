@@ -278,27 +278,32 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     ex.cancel_orders(symbol)
 
     try:
+        close_amount = float(os.getenv("CLOSE_AMOUNT", 0))
         # 判断是否有买入信号
         if side == "buy":
             # 判断是否有空仓
             if position["short"]["qty"] > 0:
+                close_amount = min(
+                    close_amount if close_amount > 0 else amount,
+                    amount,
+                )
                 # 平空
                 logger.info(
-                    f"close short: {last['close']}, profit: {position['short']['upnl']}"
+                    f"close short: {last['close']}, amount:{close_amount}, profit: {position['short']['upnl']}"
                 )
-                ex.close_position(symbol, "buy", amount)
+                ex.close_position(symbol, "buy", close_amount)
                 # 如果全部平仓，反向开单
-                if amount >= position["short"]["qty"]:
+                if close_amount >= position["short"]["qty"]:
                     # 开多
                     logger.info(
-                        f"all short position have been closed. open long: {last['close']}"
+                        f"all short position have been closed. open long: {last['close']}, amount:{amount}"
                     )
                     ex.create_order_market(symbol, "buy", amount, last["close"])
 
             else:
                 if position["long"]["qty"] < amount_max_limit:
                     # 开多
-                    logger.info(f"open long: {last['close']}")
+                    logger.info(f"open long: {last['close']}, amount:{amount}")
                     ex.create_order_market(symbol, "buy", amount, last["close"])
                 else:
                     # 超出最大仓位
@@ -319,22 +324,26 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
         elif side == "sell":
             # 判断是否有多仓
             if position["long"]["qty"] > 0:
+                close_amount = min(
+                    close_amount if close_amount > 0 else amount,
+                    amount,
+                )
                 # 平多
                 logger.info(
-                    f"close long: {last['close']}, profit: {position['long']['upnl']}"
+                    f"close long: {last['close']}, amount:{close_amount}, profit: {position['long']['upnl']}"
                 )
-                ex.close_position(symbol, "sell", amount)
+                ex.close_position(symbol, "sell", close_amount)
                 # 如果全部平仓，反向开单
-                if amount >= position["long"]["qty"]:
+                if close_amount >= position["long"]["qty"]:
                     # 开多
                     logger.info(
-                        f"all long position have been closed. open short: {last['close']}"
+                        f"all long position have been closed. open short: {last['close']}, amount:{amount}"
                     )
                     ex.create_order_market(symbol, "sell", amount, last["close"])
             else:
                 if position["short"]["qty"] < amount_max_limit:
                     # 开空
-                    logger.info(f"open short: {last['close']}")
+                    logger.info(f"open short: {last['close']}, amount:{amount}")
                     ex.create_order_market(symbol, "sell", amount, last["close"])
                 else:
                     # 超出最大仓位
