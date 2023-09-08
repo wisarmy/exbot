@@ -1,4 +1,6 @@
+import datetime
 from pandas import DataFrame
+import pytz
 import talib
 import pandas as pd  # noqa
 
@@ -58,23 +60,46 @@ class macd:
         df["close_pct_change"] = df["close"].pct_change()
         return df
 
+    def filter_timeframe_threshold(self, df, conditions):
+        # 确认交叉信号
+        timeframe_seconds = df.index.unique().to_series().diff().min().total_seconds()
+        if timeframe_seconds == 60:
+            threshold = 10
+        elif timeframe_seconds == 5 * 60:
+            threshold = 15
+        elif timeframe_seconds == 15 * 60:
+            threshold = 20
+        else:
+            threshold = 30
+        last_date = df.index[-1]
+        next_date = last_date + datetime.timedelta(seconds=timeframe_seconds)
+        now_date = datetime.datetime.now(tz=pytz.timezone("Asia/Shanghai"))
+        # 如果距离下次没在 threshold 内，去除 last_date 的信号
+        if next_date - now_date > datetime.timedelta(seconds=threshold):
+            conditions.append(df.index < last_date)
+            df.loc[df.index >= last_date, "signal_by"] = pd.Series(
+                "removed_by_timeframe_threshold",
+                index=df.index[df.index >= last_date],
+            )
+
     def populate_buy_trend(self, df: DataFrame) -> DataFrame:
         if "signal" not in df:
             df["signal"] = pd.Series(dtype="str")
-            df["signal_removed"] = pd.Series(dtype="str")
+            df["signal_by"] = pd.Series(dtype="str")
 
         conditions = []
         conditions.append(df["cross"] == 1)
+        self.filter_timeframe_threshold(df, conditions)
 
         if conditions:
             df.loc[reduce(lambda x, y: x & y, conditions), "buy"] = 1
             # update signals that prices have big rise
             conditions.append(df["close_pct_change"] <= 0.004)
             df.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "buy"
-            df["signal_removed"] = np.where(
+            df["signal_by"] = np.where(
                 (df["buy"] == 1) & (df["close_pct_change"] > 0.004),
-                "buy_rise",
-                df["signal_removed"],
+                "removed_buy_rise",
+                df["signal_by"],
             )
 
         return df
@@ -82,20 +107,21 @@ class macd:
     def populate_sell_trend(self, df: DataFrame) -> DataFrame:
         if "signal" not in df:
             df["signal"] = pd.Series(dtype="str")
-            df["signal_removed"] = pd.Series(dtype="str")
+            df["signal_by"] = pd.Series(dtype="str")
 
         conditions = []
         conditions.append(df["cross"] == -1)
+        self.filter_timeframe_threshold(df, conditions)
 
         if conditions:
             df.loc[reduce(lambda x, y: x & y, conditions), "sell"] = 1
             conditions.append(df["close_pct_change"] >= -0.004)
             df.loc[reduce(lambda x, y: x & y, conditions), "signal"] = "sell"
             # update signals that prices have big fall
-            df["signal_removed"] = np.where(
+            df["signal_by"] = np.where(
                 (df["sell"] == 1) & (df["close_pct_change"] < -0.004),
-                "sell_fall",
-                df["signal_removed"],
+                "removed_sell_fall",
+                df["signal_by"],
             )
 
         return df
