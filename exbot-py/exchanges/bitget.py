@@ -212,4 +212,5 @@ class BitgetExchange:
             values[side]["entry_price"] = float(position["entryPrice"])
         except Exception as e:
             logger.exception(f"An unknown error occurred in fetch_position: {e}")
+            return None
         return values

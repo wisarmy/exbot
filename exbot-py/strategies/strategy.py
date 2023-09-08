@@ -206,6 +206,9 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     last, last_date = df.iloc[-1], df.index[-1]
     # 获取当前仓位
     position = ex.fetch_position(symbol)
+    if position is None:
+        return side
+
     logger.debug(f"position: {position}")
     position_logger.info(
         f"{symbol}, {last['close']}, {position['short']['qty']}, {position['short']['entry_price']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['entry_price']}, {position['long']['realised']}, {position['long']['upnl']}"
@@ -335,6 +338,9 @@ def uamount_limit(
     amount_max_limit = uamount_max_limit / last_price
     # 获取当前仓位
     position = ex.fetch_position(symbol)
+    if position is None:
+        return side
+
     logger.debug(f"position: {position}")
     position_logger.info(
         f"{symbol}, {last['close']}, {position['short']['qty']}, {position['short']['entry_price']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['entry_price']}, {position['long']['realised']}, {position['long']['upnl']}"
