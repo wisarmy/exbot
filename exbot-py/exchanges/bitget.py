@@ -194,7 +194,7 @@ class BitgetExchange:
             logger.debug(f"fetch_position: {position}")
             # 判断是否有持仓
             if position["entryPrice"] is None:
-                return
+                return values
             side = position["side"]
             values[side]["qty"] = float(
                 position["contracts"]
