@@ -224,3 +224,10 @@ class ichiv1:
             dataframe.loc[reduce(lambda x, y: x & y, conditions), "sell"] = 1
 
         return dataframe
+
+    def populate_close_position(
+        self, df: DataFrame, take_profit=True, stop_loss=True
+    ) -> DataFrame:
+        df["take_profit"] = pd.Series(dtype="str")
+        df["stop_loss"] = pd.Series(dtype="str")
+        return df

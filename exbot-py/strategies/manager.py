@@ -38,6 +38,11 @@ def with_strategy(strategy_name, ex, df, args, trade=True):
             df = stgy.populate_indicators(df)
             df = stgy.populate_buy_trend(df)
             df = stgy.populate_sell_trend(df)
+            df = stgy.populate_close_position(
+                df,
+                os.getenv("TAKE_PROFIT", "false") == "true",
+                os.getenv("STOP_LOSS", "true") == "true",
+            )
             if trade:
                 side = strategy.uamount_limit(
                     ex, df, args.symbol, args.uamount, args.uamount_max
