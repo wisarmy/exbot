@@ -1,6 +1,6 @@
 import os
 from core import chart
-from strategies import macd, strategy
+from strategies import ichiv1, macd, strategy
 from core.logger import logger
 import plotly.graph_objects as go
 
@@ -30,6 +30,16 @@ def with_strategy(strategy_name, ex, df, args, trade=True):
                 os.getenv("TAKE_PROFIT", "false") == "true",
                 os.getenv("STOP_LOSS", "true") == "true",
             )
+            if trade:
+                side = strategy.amount_limit(
+                    ex, df, args.symbol, args.amount, args.amount_max_limit
+                )
+        case "ichiv1":
+            stgy = ichiv1.ichiv1()
+            df = stgy.populate_indicators(df)
+
+            df = stgy.populate_buy_trend(df)
+            df = stgy.populate_sell_trend(df)
             if trade:
                 side = strategy.amount_limit(
                     ex, df, args.symbol, args.amount, args.amount_max_limit

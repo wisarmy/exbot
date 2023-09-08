@@ -58,18 +58,18 @@ def fig_position_price(df):
     df["entry_price"] = np.where(
         df["short_qty"] > 0,
         df["short_entry_price"],
-        df["long_entry_price"],
+        np.where(df["long_qty"] > 0, df["long_entry_price"], df["price"]),
     )
 
     df["take_profit_close_price"] = np.where(
         df["short_qty"] > 0,
         df["short_take_profit_close_price"],
-        df["long_take_profit_close_price"],
+        np.where(df["long_qty"] > 0, df["long_take_profit_close_price"], df["price"]),
     )
     df["stop_loss_close_price"] = np.where(
         df["short_qty"] > 0,
         df["short_stop_loss_close_price"],
-        df["long_stop_loss_close_price"],
+        np.where(df["long_qty"] > 0, df["long_stop_loss_close_price"], df["price"]),
     )
 
     for name, group in df.groupby("symbol"):
@@ -94,9 +94,7 @@ def fig_position_price(df):
             xref="paper",
             yref="y",
             x=1.052,
-            y=np.where(
-                df["entry_price"].iloc[-1] == 0, np.nan, df["entry_price"].iloc[-1]
-            ),
+            y=df["entry_price"].iloc[-1],
             text="{:.5f}".format(df["entry_price"].iloc[-1]),
             showarrow=False,
             font=dict(
@@ -125,11 +123,7 @@ def fig_position_price(df):
             xref="paper",
             yref="y",
             x=1.052,
-            y=np.where(
-                df["take_profit_close_price"].iloc[-1] == 0,
-                np.nan,
-                df["take_profit_close_price"].iloc[-1],
-            ),
+            y=df["take_profit_close_price"].iloc[-1],
             text="{:.5f}".format(df["take_profit_close_price"].iloc[-1]),
             showarrow=False,
             font=dict(
@@ -157,11 +151,7 @@ def fig_position_price(df):
             xref="paper",
             yref="y",
             x=1.052,
-            y=np.where(
-                df["stop_loss_close_price"].iloc[-1] == 0,
-                np.nan,
-                df["stop_loss_close_price"].iloc[-1],
-            ),
+            y=df["stop_loss_close_price"].iloc[-1],
             text="{:.5f}".format(df["stop_loss_close_price"].iloc[-1]),
             showarrow=False,
             font=dict(

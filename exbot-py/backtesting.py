@@ -8,9 +8,86 @@ from exchanges import exchange
 import pandas as pd
 from core.logger import logger
 from strategies.manager import with_strategy
+from pandas import DataFrame
 
-pd.set_option("display.max_columns", None)
+pd.set_option("display.max_columns", 1000)
 pd.set_option("display.width", 1000)
+
+fee_rate = 0.0012
+
+
+# 计算收益
+def cal_profit(hold_side, position_spend, position_amount, close_price):
+    if hold_side == "buy":
+        upnl = position_amount * close_price - position_spend
+    else:
+        upnl = position_spend - position_amount * close_price
+    fee = position_spend * fee_rate
+    net_profit = upnl - fee
+    return net_profit, fee
+
+
+def backtesting(df: DataFrame) -> DataFrame:
+    df["take_profit"] = pd.Series(dtype="str")
+    df["stop_loss"] = pd.Series(dtype="str")
+    # 持仓
+    hold_side = None
+    # 持仓花费
+    position_spend = 0
+    # 持仓数量
+    position_amount = 0
+    # 总收益
+    total_profit = 0
+    total_fee = 0
+    # last_price
+    last_price = 0
+
+    for index, row in df.iterrows():
+        last_price = row["close"]
+        if pd.notnull(row["buy"]) or pd.notnull(row["sell"]):
+            # logger.info(f"{row.name}, close: {row['close']}, {row['buy']} {row['sell']}")
+            signal = "buy" if pd.notnull(row["buy"]) else "sell"
+            per_amount = 6 / float(row["close"])
+            if hold_side is None:
+                hold_side = signal
+                position_spend = float(row["close"]) * per_amount
+                position_amount = per_amount
+                logger.info(f"{row.name} open {signal} {row['close']} {per_amount}")
+            else:
+                if signal == hold_side:
+                    # 如果波动小，不下单
+                    average_price = position_spend / position_amount
+
+                    # if abs(row["close"] - average_price) / average_price < 0.005:
+                    #     logger.info(
+                    #         f"The price is not satisfied, price:{row['close']}, avg_price: {average_price}"
+                    #     )
+                    #     continue
+                    position_spend += float(row["close"]) * per_amount
+                    position_amount += per_amount
+                    logger.info(
+                        f"{row.name} add {signal} {row['close']} {per_amount}, avg_price: {average_price}"
+                    )
+                else:
+                    profit, fee = cal_profit(
+                        hold_side, position_spend, position_amount, row["close"]
+                    )
+                    total_profit += profit
+                    total_fee += fee
+                    logger.info(
+                        f"{row.name} close {hold_side} {row['close']}, position_spend: {position_spend}, position_amount: {position_amount}, profit: {profit}, total profit: {total_profit}, total fee: {total_fee}"
+                    )
+                    # # 重置
+                    hold_side = None
+
+    profit, fee = cal_profit(hold_side, position_spend, position_amount, last_price)
+    logger.info(
+        f"unsettled position: position_spend: {position_spend}, position_amount: {position_amount}, profit: {profit}, fee: {fee}"
+    )
+
+    logger.info(f"backtesting total profit: {total_profit}")
+    return df
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="exbot backtesting for python")
@@ -49,3 +126,4 @@ if __name__ == "__main__":
     df = chart.get_charting(ex, args.symbol, args.timeframe, args.days)
     df = with_strategy(args.strategy, ex, df, args, False)
     logger.info(df)
+    backtesting(df)

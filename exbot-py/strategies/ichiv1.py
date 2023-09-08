@@ -1,5 +1,3 @@
-# --- Do not remove these libs ---
-from freqtrade.strategy.interface import IStrategy
 from pandas import DataFrame
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
@@ -8,15 +6,6 @@ import pandas as pd  # noqa
 pd.options.mode.chained_assignment = None  # default='warn'
 import technical.indicators as ftt
 from functools import reduce
-from datetime import datetime, timedelta
-from freqtrade.strategy import merge_informative_pair
-import numpy as np
-from freqtrade.strategy import stoploss_from_open
-import json
-
-pd.set_option("display.max_rows", None)
-pd.set_option("display.max_columns", None)
-pd.set_option("display.width", 1000)
 
 
 class ichiv1:
@@ -26,8 +15,9 @@ class ichiv1:
         "buy_trend_above_senkou_level": 1,
         "buy_trend_bullish_level": 6,
         "buy_fan_magnitude_shift_value": 3,
-        "buy_min_fan_magnitude_gain": 1.002  # NOTE: Good value (Win% ~70%), alot of trades
-        # "buy_min_fan_magnitude_gain": 1.008 # NOTE: Very save value (Win% ~90%), only the biggest moves 1.008,
+        "buy_min_fan_magnitude_gain": 1.001
+        # "buy_min_fan_magnitude_gain": 1.002  # NOTE: Good value (Win% ~70%), alot of trades
+        # "buy_min_fan_magnitude_gain": 1.008,  # NOTE: Very save value (Win% ~90%), only the biggest moves 1.008,
     }
 
     # Sell hyperspace params:
@@ -84,14 +74,13 @@ class ichiv1:
     }
 
     def populate_indicators(self, dataframe: DataFrame) -> DataFrame:
-        print(f"{dataframe}")
-        print("----------------------")
-
+        dataframe = dataframe.reset_index()
         heikinashi = qtpylib.heikinashi(dataframe)
         dataframe["open"] = heikinashi["open"]
         # dataframe['close'] = heikinashi['close']
         dataframe["high"] = heikinashi["high"]
         dataframe["low"] = heikinashi["low"]
+        dataframe = dataframe.set_index("date")
 
         dataframe["trend_close_5m"] = dataframe["close"]
         dataframe["trend_close_15m"] = ta.EMA(dataframe["close"], timeperiod=3)
