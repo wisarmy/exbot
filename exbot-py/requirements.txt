@@ -4,3 +4,4 @@ pandas
 ta-lib
 plotly
 dash
+freqtrade
