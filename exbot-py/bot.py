@@ -36,10 +36,23 @@ if __name__ == "__main__":
         "--amount", type=float, default=1, help="The symbol amount to trade"
     )
     parser.add_argument(
-        "--amount_max_limit",
+        "--amount_max",
         type=float,
         default=1,
         help="The symbol amount max limit to trade",
+    )
+    # uamount
+    parser.add_argument(
+        "--uamount",
+        type=float,
+        default=5.5,
+        help="The usdt amount to trade, > 5",
+    )
+    parser.add_argument(
+        "--uamount_max",
+        type=float,
+        default=100,
+        help="The usdt amount max limit to trade",
     )
     parser.add_argument(
         "-t",

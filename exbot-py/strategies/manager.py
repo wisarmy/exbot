@@ -22,7 +22,6 @@ def with_strategy(strategy_name, ex, df, args, trade=True):
         case "macd":
             stgy = macd.macd()
             df = stgy.populate_indicators(df)
-
             df = stgy.populate_buy_trend(df)
             df = stgy.populate_sell_trend(df)
             df = stgy.populate_close_position(
@@ -32,17 +31,16 @@ def with_strategy(strategy_name, ex, df, args, trade=True):
             )
             if trade:
                 side = strategy.amount_limit(
-                    ex, df, args.symbol, args.amount, args.amount_max_limit
+                    ex, df, args.symbol, args.amount, args.amount_max
                 )
         case "ichiv1":
             stgy = ichiv1.ichiv1()
             df = stgy.populate_indicators(df)
-
             df = stgy.populate_buy_trend(df)
             df = stgy.populate_sell_trend(df)
             if trade:
-                side = strategy.amount_limit(
-                    ex, df, args.symbol, args.amount, args.amount_max_limit
+                side = strategy.uamount_limit(
+                    ex, df, args.symbol, args.uamount, args.uamount_max
                 )
         case _:
             logger.warning(f"strategy {strategy_name} not found")
