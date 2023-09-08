@@ -190,29 +190,26 @@ class BitgetExchange:
             },
         }
         try:
-            data = self.exchange.fetch_position(symbol)
-            logger.debug(f"fetch_position: {data}")
-            for position in data:
-                # 判断是否有持仓
-                if position["entryPrice"] is None:
-                    continue
-                side = position["side"]
-                values[side]["qty"] = float(
-                    position["contracts"]
-                )  # Use "contracts" instead of "contractSize"
-                values[side]["price"] = float(position["entryPrice"])
-                values[side]["realised"] = round(
-                    float(position["info"]["achievedProfits"]), 4
-                )
-                values[side]["upnl"] = round(float(position["unrealizedPnl"]), 4)
-                if position["liquidationPrice"] is not None:
-                    values[side]["liq_price"] = float(position["liquidationPrice"])
-                else:
-                    logger.warning(
-                        f"Warning: liquidationPrice is None for {side} position"
-                    )
-                    values[side]["liq_price"] = None
-                values[side]["entry_price"] = float(position["entryPrice"])
+            position = self.exchange.fetch_position(symbol)
+            logger.debug(f"fetch_position: {position}")
+            # 判断是否有持仓
+            if position["entryPrice"] is None:
+                return
+            side = position["side"]
+            values[side]["qty"] = float(
+                position["contracts"]
+            )  # Use "contracts" instead of "contractSize"
+            values[side]["price"] = float(position["entryPrice"])
+            values[side]["realised"] = round(
+                float(position["info"]["achievedProfits"]), 4
+            )
+            values[side]["upnl"] = round(float(position["unrealizedPnl"]), 4)
+            if position["liquidationPrice"] is not None:
+                values[side]["liq_price"] = float(position["liquidationPrice"])
+            else:
+                logger.warning(f"Warning: liquidationPrice is None for {side} position")
+                values[side]["liq_price"] = None
+            values[side]["entry_price"] = float(position["entryPrice"])
         except Exception as e:
             logger.exception(f"An unknown error occurred in fetch_position: {e}")
         return values
