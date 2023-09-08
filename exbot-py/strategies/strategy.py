@@ -256,14 +256,14 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     if side is None:
         # 止盈止损信号
         if handle_take_profit(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
+            set_used_cache(last_date, 1, "real")
         elif handle_take_profit_fix_upnl(real, ex, symbol, position):
             set_used_cache(real_date, 1, "real")
         elif handle_take_profit_fix_price_urate(real, ex, symbol, position):
             set_used_cache(real_date, 1, "real")
 
         if handle_stop_loss(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
+            set_used_cache(last_date, 1, "real")
         elif handle_stop_loss_fix_upnl(real, ex, symbol, position):
             set_used_cache(real_date, 1, "real")
         elif handle_stop_loss_fix_price_urate(real, ex, symbol, position):
