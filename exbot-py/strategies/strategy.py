@@ -225,19 +225,20 @@ def amount_limit(ex: BitgetExchange, df, symbol, amount, amount_max_limit):
     side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
     if side is None:
         # 止盈止损信号
-        if handle_take_profit(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
-        elif handle_take_profit_fix_upnl(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
-        elif handle_take_profit_fix_price_urate(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
-
-        if handle_stop_loss(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
-        elif handle_stop_loss_fix_upnl(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
-        elif handle_stop_loss_fix_price_urate(last, ex, symbol, position):
-            set_used_cache(last_date, 1)
+        if get_used_cache(last_date, "take_profit") != 1:
+            if handle_take_profit(last, ex, symbol, position):
+                set_used_cache(last_date, 1, "take_profit")
+            elif handle_take_profit_fix_upnl(last, ex, symbol, position):
+                set_used_cache(last_date, 1, "take_profit")
+            elif handle_take_profit_fix_price_urate(last, ex, symbol, position):
+                set_used_cache(last_date, 1, "take_profit")
+        if get_used_cache(last_date, "stop_loss") != 1:
+            if handle_stop_loss(last, ex, symbol, position):
+                set_used_cache(last_date, 1, "stop_loss")
+            elif handle_stop_loss_fix_upnl(last, ex, symbol, position):
+                set_used_cache(last_date, 1, "stop_loss")
+            elif handle_stop_loss_fix_price_urate(last, ex, symbol, position):
+                set_used_cache(last_date, 1, "stop_loss")
 
         return side
 
