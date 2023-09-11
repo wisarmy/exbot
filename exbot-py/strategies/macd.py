@@ -146,7 +146,12 @@ class macd:
 
         conditions = []
         self.filter_timeframe_threshold(df, conditions)
-        for index, row in df.loc[reduce(lambda x, y: x & y, conditions)].iterrows():
+
+        for index, row in (
+            df.loc[reduce(lambda x, y: x & y, conditions)].iterrows()
+            if len(conditions) > 0
+            else df.iterrows()
+        ):
             # 如果发现信号，就重置计数器
             if pd.notnull(row["signal"]):
                 # set open data
