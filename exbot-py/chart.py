@@ -25,15 +25,6 @@ if __name__ == "__main__":
         "--strategy", type=str, default=None, help="The strategy to use"
     )
     parser.add_argument(
-        "--amount", type=float, default=1, help="The symbol amount to trade"
-    )
-    parser.add_argument(
-        "--amount_max_limit",
-        type=float,
-        default=1,
-        help="The symbol amount max limit to trade",
-    )
-    parser.add_argument(
         "-t",
         "--timeframe",
         type=str,
