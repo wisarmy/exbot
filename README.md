@@ -16,7 +16,7 @@ cd exbot-py
 ```
 ### Installation
 ```bash
-pip install -r requirements.txt
+make init
 ```
 
 ## Exchange Support
