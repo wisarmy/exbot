@@ -31,7 +31,7 @@ def with_strategy(strategy_name, ex, df, args, trade=True):
             )
             if trade:
                 side = strategy.amount_limit(
-                    ex, df, args.symbol, args.amount, args.amount_max
+                    ex, df, args.symbol, args.amount, args.amount_max, reversals=True
                 )
         case "ichiv1":
             stgy = ichiv1.ichiv1()
@@ -45,7 +45,7 @@ def with_strategy(strategy_name, ex, df, args, trade=True):
             )
             if trade:
                 side = strategy.uamount_limit(
-                    ex, df, args.symbol, args.uamount, args.uamount_max
+                    ex, df, args.symbol, args.uamount, args.uamount_max, reversals=False
                 )
         case _:
             logger.warning(f"strategy {strategy_name} not found")

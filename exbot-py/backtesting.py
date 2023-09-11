@@ -47,7 +47,7 @@ def backtesting(df: DataFrame) -> DataFrame:
         if pd.notnull(row["buy"]) or pd.notnull(row["sell"]):
             # logger.info(f"{row.name}, close: {row['close']}, {row['buy']} {row['sell']}")
             signal = "buy" if pd.notnull(row["buy"]) else "sell"
-            per_amount = 6 / float(row["close"])
+            per_amount = 5.5 / float(row["close"])
             if hold_side is None:
                 hold_side = signal
                 position_spend = float(row["close"]) * per_amount
