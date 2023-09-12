@@ -27,7 +27,7 @@ def cal_profit(hold_side, position_spend, position_amount, close_price):
     return net_profit, fee
 
 
-def backtesting(df: DataFrame) -> DataFrame:
+def backtesting(df: DataFrame, reversals=False) -> DataFrame:
     df["take_profit"] = pd.Series(dtype="str")
     df["stop_loss"] = pd.Series(dtype="str")
     # 持仓
@@ -58,11 +58,6 @@ def backtesting(df: DataFrame) -> DataFrame:
                     # 如果波动小，不下单
                     average_price = position_spend / position_amount
 
-                    # if abs(row["close"] - average_price) / average_price < 0.005:
-                    #     logger.info(
-                    #         f"The price is not satisfied, price:{row['close']}, avg_price: {average_price}"
-                    #     )
-                    #     continue
                     position_spend += float(row["close"]) * per_amount
                     position_amount += per_amount
                     logger.info(
@@ -77,8 +72,16 @@ def backtesting(df: DataFrame) -> DataFrame:
                     logger.info(
                         f"{row.name} close {hold_side} {row['close']}, position_spend: {position_spend}, position_amount: {position_amount}, profit: {profit}, total profit: {total_profit}, total fee: {total_fee}"
                     )
-                    # # 重置
-                    hold_side = None
+                    # 反向开仓
+                    if reversals:
+                        hold_side = signal
+                        position_spend = float(row["close"]) * per_amount
+                        position_amount = per_amount
+                        logger.info(
+                            f"{row.name} open {signal} {row['close']} {per_amount}"
+                        )
+                    else:
+                        hold_side = None
 
     profit, fee = cal_profit(hold_side, position_spend, position_amount, last_price)
     logger.info(
@@ -108,6 +111,7 @@ if __name__ == "__main__":
         required=True,
         help="timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M",
     )
+    parser.add_argument("--reversals", action="store_true", help="reversals")
     # add arg verbose
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
     args = parser.parse_args()
@@ -126,4 +130,4 @@ if __name__ == "__main__":
     df = chart.get_charting(ex, args.symbol, args.timeframe, args.days)
     df = with_strategy(args.strategy, ex, df, args, False)
     logger.info(df)
-    backtesting(df)
+    backtesting(df, args.reversals)
