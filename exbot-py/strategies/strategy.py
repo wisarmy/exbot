@@ -1,5 +1,6 @@
 import datetime
 import os
+from typing import Literal
 from exchanges.bitget import BitgetExchange
 import pytz
 from core.logger import logger
@@ -200,6 +201,44 @@ def handle_stop_loss_fix_price_urate(last, ex: BitgetExchange, symbol, position)
     return False
 
 
+def create_order_market(
+    ex: BitgetExchange,
+    symbol: str,
+    side: Literal["buy", "sell"],
+    amount: float,
+    price: float,
+    entry_price=0.0,
+):
+    open_price = entry_price if entry_price > 0 else price
+    stop_loss_urate = float(os.getenv("POSITION_STOP_LOSS_URATE", 0.1))
+    stop_loss_trigger_price = (
+        open_price * (1 + stop_loss_urate)
+        if side == "sell"
+        else open_price * (1 - stop_loss_urate)
+    )
+    take_profit_urate = float(os.getenv("POSITION_TAKE_PROFIT_URATE", 0.1))
+    take_profit_trigger_price = (
+        open_price * (1 + take_profit_urate)
+        if side == "buy"
+        else open_price * (1 - take_profit_urate)
+    )
+    params = {
+        "stopLoss": {
+            "type": "market",
+            "triggerPrice": stop_loss_trigger_price,
+        },
+        "takeProfit": {
+            "type": "market",
+            "triggerPrice": take_profit_trigger_price,
+        },
+    }
+
+    logger.info(
+        f"open {side}: {price}, amount: {amount}, stop_loss: {stop_loss_trigger_price}, take_profit: {take_profit_trigger_price}"
+    )
+    ex.create_order_market(symbol, side, amount, price, params)
+
+
 # 数量限制
 def amount_limit(
     ex: BitgetExchange, df, symbol, amount, amount_max_limit, reversals=False
@@ -249,6 +288,8 @@ def amount_limit(
     last_price = float(last["close"])
     short_position_amount = position["short"]["qty"]
     long_position_amount = position["long"]["qty"]
+    short_entry_price = position["short"]["entry_price"]
+    long_entry_price = position["long"]["entry_price"]
 
     logger.info(f"strategy [{side}] signal: [{last_date} {last['close']}]")
     # 如果有新的信号，先取消所有订单
@@ -264,19 +305,16 @@ def amount_limit(
                     f"close short: {last_price}, profit: {position['short']['upnl']}"
                 )
                 ex.close_position(symbol, "buy", short_position_amount)
+                logger.info(f"all short position have been closed.")
                 # 反向开单
                 if reversals:
-                    # 开多
-                    logger.info(
-                        f"all short position have been closed. open long: {last_price}"
-                    )
-                    ex.create_order_market(symbol, "buy", amount, last_price)
+                    create_order_market(ex, symbol, "buy", amount, last_price)
 
             else:
                 if long_position_amount < amount_max_limit:
-                    # 开多
-                    logger.info(f"open long: {last_price}")
-                    ex.create_order_market(symbol, "buy", amount, last_price)
+                    create_order_market(
+                        ex, symbol, "buy", amount, last_price, long_entry_price
+                    )
                 else:
                     # 超出最大仓位
                     logger.info(f"long position is max: {long_position_amount}")
@@ -289,18 +327,15 @@ def amount_limit(
                     f"close long: {last_price}, profit: {position['long']['upnl']}"
                 )
                 ex.close_position(symbol, "sell", long_position_amount)
+                logger.info(f"all long position have been closed.")
                 # 反向开单
                 if reversals:
-                    # 开空
-                    logger.info(
-                        f"all long position have been closed. open short: {last_price}"
-                    )
-                    ex.create_order_market(symbol, "sell", amount, last_price)
+                    create_order_market(ex, symbol, "sell", amount, last_price)
             else:
                 if short_position_amount < amount_max_limit:
-                    # 开空
-                    logger.info(f"open short: {last_price}")
-                    ex.create_order_market(symbol, "sell", amount, last_price)
+                    create_order_market(
+                        ex, symbol, "sell", amount, last_price, short_entry_price
+                    )
                 else:
                     # 超出最大仓位
                     logger.info(f"short position is max: {short_position_amount}")
