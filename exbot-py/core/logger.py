@@ -52,11 +52,11 @@ logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
 
-def setup_datalogger(log_file):
+def setup_datalogger(log_file, dir="logs"):
     datalogger = logging.getLogger("data_logger")
     datalogger.setLevel(logging.INFO)
     formatter = logging.Formatter("%(asctime)s, %(message)s")
-    file_handler = logging.FileHandler(f"logs/{log_file}")
+    file_handler = logging.FileHandler(f"{dir}/{log_file}")
     file_handler.setFormatter(formatter)
     datalogger.addHandler(file_handler)
 

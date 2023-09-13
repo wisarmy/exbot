@@ -10,7 +10,7 @@ from collections import OrderedDict
 used_cache = OrderedDict()
 cache_size = 128
 # symbol, price, short_qty, short_entry_price, short_realised, short_upnl, long_qty, long_entry_price, long_realised, long_upnl
-position_logger = setup_datalogger("position.csv")
+position_logger = setup_datalogger("position.csv", "data")
 
 
 def set_used_cache(key, value, cache_type=""):
