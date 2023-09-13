@@ -5,4 +5,4 @@ ta-lib
 plotly
 dash
 freqtrade
-pybitget
+python-bitget
