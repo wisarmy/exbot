@@ -111,6 +111,7 @@ class BitgetExchange:
         hold_side: Literal["long", "short"],
     ):
         try:
+            trigger_price = round(trigger_price, 4)
             self.client.mix_place_PositionsTPSL(
                 self.market_symbol(symbol=symbol),
                 marginCoin="USDT",
