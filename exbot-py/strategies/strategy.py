@@ -222,21 +222,15 @@ def create_order_market(
         if side == "buy"
         else open_price * (1 - take_profit_urate)
     )
-    params = {
-        "stopLoss": {
-            "type": "market",
-            "triggerPrice": stop_loss_trigger_price,
-        },
-        "takeProfit": {
-            "type": "market",
-            "triggerPrice": take_profit_trigger_price,
-        },
-    }
 
     logger.info(
         f"open {side}: {price}, amount: {amount}, stop_loss: {stop_loss_trigger_price}, take_profit: {take_profit_trigger_price}"
     )
-    ex.create_order_market(symbol, side, amount, price, params)
+    ex.create_order_market(symbol, side, amount, price)
+    # position tpsl
+    hold_side = signal_to_side(side)
+    ex.place_position_tpsl(symbol, "pos_loss", stop_loss_trigger_price, hold_side)
+    ex.place_position_tpsl(symbol, "pos_profit", take_profit_trigger_price, hold_side)
 
 
 # 数量限制

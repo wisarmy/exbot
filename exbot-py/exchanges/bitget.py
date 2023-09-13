@@ -3,11 +3,20 @@ from core.logger import logger
 import time
 from ccxt.base.errors import RateLimitExceeded
 from typing import Literal
+from pybitget import Client
 
 
 class BitgetExchange:
     def __init__(self, exchange: ccxt.bitget):
         self.exchange: ccxt.bitget = exchange
+        self.client = Client(
+            self.exchange.apiKey,
+            self.exchange.secret,
+            passphrase=self.exchange.password,
+        )
+
+    def market_symbol(self, symbol):
+        return self.exchange.market(symbol)["id"]
 
     def load_markets(self):
         self.exchange.load_markets()
@@ -71,7 +80,12 @@ class BitgetExchange:
         price: float,
         params: dict = {},
     ):
-        return self.exchange.create_order(symbol, "limit", side, amount, price, params)
+        try:
+            return self.exchange.create_order(
+                symbol, "limit", side, amount, price, params
+            )
+        except Exception as e:
+            logger.exception(f"An unknown error occurred in create_order_limit(): {e}")
 
     def create_order_market(
         self,
@@ -81,7 +95,32 @@ class BitgetExchange:
         price: float,
         params: dict = {},
     ):
-        return self.exchange.create_order(symbol, "market", side, amount, None, params)
+        try:
+            return self.exchange.create_order(
+                symbol, "market", side, amount, None, params
+            )
+        except Exception as e:
+            logger.exception(f"An unknown error occurred in create_order_market(): {e}")
+
+    # position tpsl
+    def place_position_tpsl(
+        self,
+        symbol: str,
+        plan_type: Literal["pos_loss", "pos_profit"],
+        trigger_price: float,
+        hold_side: Literal["long", "short"],
+    ):
+        try:
+            self.client.mix_place_PositionsTPSL(
+                self.market_symbol(symbol=symbol),
+                marginCoin="USDT",
+                planType=plan_type,
+                triggerPrice=trigger_price,
+                triggerType="market_price",
+                holdSide=hold_side,
+            )
+        except Exception as e:
+            logger.exception(f"An unknown error occurred in place_position_tpsl(): {e}")
 
     def cancel_orders(self, symbol: str):
         try:
