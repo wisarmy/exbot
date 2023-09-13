@@ -114,9 +114,13 @@ if __name__ == "__main__":
     parser.add_argument("--reversals", action="store_true", help="reversals")
     # add arg verbose
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
+    # add arg verbose
+    parser.add_argument("-vv", "--verbose2", action="store_true", help="verbose mode")
     args = parser.parse_args()
 
     if args.verbose:
+        logger.setLevel(logging.DEBUG)
+    if args.verbose2:
         logger.setLevel(logging.DEBUG)
         pd.set_option("display.max_rows", None)
 
