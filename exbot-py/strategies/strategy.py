@@ -55,8 +55,7 @@ def handle_take_profit(last, ex: BitgetExchange, symbol, position):
                 logger.info(
                     f"take_profit {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: {profit}"
                 )
-                ex.close_position(symbol, order_side, close_amount)
-                return True
+                return ex.close_position(symbol, order_side, close_amount)
     return False
 
 
@@ -80,8 +79,7 @@ def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
                 logger.info(
                     f"stop_loss {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: {profit}"
                 )
-                ex.close_position(symbol, order_side, close_amount)
-                return True
+                return ex.close_position(symbol, order_side, close_amount)
     return False
 
 
@@ -103,8 +101,7 @@ def handle_take_profit_fix_upnl(last, ex: BitgetExchange, symbol, position):
                         f"take_profit_fix_upnl {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], TP: {fix_upnl}"
                     )
                     order_side = "buy" if side == "short" else "sell"
-                    ex.close_position(symbol, order_side, close_amount)
-                    return True
+                    return ex.close_position(symbol, order_side, close_amount)
     return False
 
 
@@ -126,8 +123,7 @@ def handle_stop_loss_fix_upnl(last, ex: BitgetExchange, symbol, position):
                         f"stop_loss_fix_upnl {side}: {last['close']}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], SL: {fix_upnl}"
                     )
                     order_side = "buy" if side == "short" else "sell"
-                    ex.close_position(symbol, order_side, close_amount)
-                    return True
+                    return ex.close_position(symbol, order_side, close_amount)
     return False
 
 
@@ -161,8 +157,7 @@ def handle_take_profit_fix_price_urate(last, ex: BitgetExchange, symbol, positio
                         f"take_profit_fix_price_urate {side}: {price}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], urate: {fix_urate}"
                     )
                     order_side = "buy" if side == "short" else "sell"
-                    ex.close_position(symbol, order_side, close_amount)
-                    return True
+                    return ex.close_position(symbol, order_side, close_amount)
     return False
 
 
@@ -196,8 +191,7 @@ def handle_stop_loss_fix_price_urate(last, ex: BitgetExchange, symbol, position)
                         f"stop_loss_fix_price_urate {side}: {price}, amount: [{close_amount}/{position_amount}], profit: [{profit}/{upnl}], urate: {fix_urate}"
                     )
                     order_side = "buy" if side == "short" else "sell"
-                    ex.close_position(symbol, order_side, close_amount)
-                    return True
+                    return ex.close_position(symbol, order_side, close_amount)
     return False
 
 
@@ -233,52 +227,58 @@ def create_order_market(
     ex.place_position_tpsl(symbol, "pos_profit", take_profit_trigger_price, hold_side)
 
 
-# 数量限制
-def amount_limit(
-    ex: BitgetExchange, df, symbol, amount, amount_max_limit, reversals=False
+# handle tpsl
+def handle_tpsl(last, last_date, ex: BitgetExchange, symbol, position):
+    # take profit
+    if (
+        handle_take_profit(last, ex, symbol, position)
+        and get_used_cache(last_date, "take_profit") != 1
+    ):
+        set_used_cache(last_date, 1, "take_profit")
+    # take profit fix upnl
+    if (
+        handle_take_profit_fix_upnl(last, ex, symbol, position)
+        and get_used_cache(last_date, "take_profit_fix_upnl") != 1
+    ):
+        set_used_cache(last_date, 1, "take_profit_fix_upnl")
+    # take profit fix price urate
+    if (
+        handle_take_profit_fix_price_urate(last, ex, symbol, position)
+        and get_used_cache(last_date, "take_profit_fix_price_urate") != 1
+    ):
+        set_used_cache(last_date, 1, "take_profit_fix_price_urate")
+    # stop loss
+    if (
+        handle_stop_loss(last, ex, symbol, position)
+        and get_used_cache(last_date, "stop_loss") != 1
+    ):
+        set_used_cache(last_date, 1, "stop_loss")
+    # stop loss fix upnl
+    if (
+        handle_stop_loss_fix_upnl(last, ex, symbol, position)
+        and get_used_cache(last_date, "stop_loss_fix_upnl") != 1
+    ):
+        set_used_cache(last_date, 1, "stop_loss_fix_upnl")
+    # stop loss fix price urate
+    if (
+        handle_stop_loss_fix_price_urate(last, ex, symbol, position)
+        and get_used_cache(last_date, "stop_loss_fix_price_urate") != 1
+    ):
+        set_used_cache(last_date, 1, "stop_loss_fix_price_urate")
+
+
+# handle side
+def handle_side(
+    ex: BitgetExchange,
+    last,
+    last_date,
+    symbol,
+    amount,
+    amount_max_limit,
+    position,
+    side,
+    reversals=False,
 ):
-    side = None
-    last, last_date = df.iloc[-1], df.index[-1]
-    # 获取当前仓位
-    position = ex.fetch_position(symbol)
-    if position is None:
-        return side
-
-    logger.debug(f"position: {position}")
-    position_logger.info(
-        f"{symbol}, {last['close']}, {position['short']['qty']}, {position['short']['entry_price']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['entry_price']}, {position['long']['realised']}, {position['long']['upnl']}"
-    )
-
-    logger.warning(
-        f"position: short profit: {position['short']['upnl']}, long profit: {position['long']['upnl']}"
-    )
-
-    # 记录已经使用过
-    if get_used_cache(last_date) == 1:
-        return side
-
-    side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
-    if side is None:
-        # 止盈止损信号
-        if get_used_cache(last_date, "take_profit") != 1:
-            if handle_take_profit(last, ex, symbol, position):
-                set_used_cache(last_date, 1, "take_profit")
-            elif handle_take_profit_fix_upnl(last, ex, symbol, position):
-                set_used_cache(last_date, 1, "take_profit")
-            elif handle_take_profit_fix_price_urate(last, ex, symbol, position):
-                set_used_cache(last_date, 1, "take_profit")
-        if get_used_cache(last_date, "stop_loss") != 1:
-            if handle_stop_loss(last, ex, symbol, position):
-                set_used_cache(last_date, 1, "stop_loss")
-            elif handle_stop_loss_fix_upnl(last, ex, symbol, position):
-                set_used_cache(last_date, 1, "stop_loss")
-            elif handle_stop_loss_fix_price_urate(last, ex, symbol, position):
-                set_used_cache(last_date, 1, "stop_loss")
-
-        return side
-
-    set_used_cache(last_date, 1)
-
     last_price = float(last["close"])
     short_position_amount = position["short"]["qty"]
     long_position_amount = position["long"]["qty"]
@@ -298,8 +298,11 @@ def amount_limit(
                 logger.info(
                     f"close short: {last_price}, profit: {position['short']['upnl']}"
                 )
-                ex.close_position(symbol, "buy", short_position_amount)
-                logger.info(f"all short position have been closed.")
+                if ex.close_position(symbol, "buy", short_position_amount):
+                    logger.info(f"all short position have been closed.")
+                else:
+                    logger.warning(f"close short failed.")
+                    return False
                 # 反向开单
                 if reversals:
                     create_order_market(ex, symbol, "buy", amount, last_price)
@@ -320,8 +323,11 @@ def amount_limit(
                 logger.info(
                     f"close long: {last_price}, profit: {position['long']['upnl']}"
                 )
-                ex.close_position(symbol, "sell", long_position_amount)
-                logger.info(f"all long position have been closed.")
+                if ex.close_position(symbol, "sell", long_position_amount):
+                    logger.info(f"all long position have been closed.")
+                else:
+                    logger.warning(f"close long failed.")
+                    return False
                 # 反向开单
                 if reversals:
                     create_order_market(ex, symbol, "sell", amount, last_price)
@@ -334,8 +340,53 @@ def amount_limit(
                     # 超出最大仓位
                     logger.info(f"short position is max: {short_position_amount}")
 
+        return True
     except Exception as e:
-        logger.exception(f"An unknown error occurred in amount_limit(): {e}")
+        logger.exception(f"An unknown error occurred in handle_side: {e}")
+
+    return False
+
+
+# 数量限制
+def amount_limit(
+    ex: BitgetExchange, df, symbol, amount, amount_max_limit, reversals=False
+):
+    side = None
+    last, last_date = df.iloc[-1], df.index[-1]
+    # 获取当前仓位
+    position = ex.fetch_position(symbol)
+    if position is None:
+        return side
+
+    logger.debug(f"position: {position}")
+    position_logger.info(
+        f"{symbol}, {last['close']}, {position['short']['qty']}, {position['short']['entry_price']}, {position['short']['realised']}, {position['short']['upnl']}, {position['long']['qty']}, {position['long']['entry_price']}, {position['long']['realised']}, {position['long']['upnl']}"
+    )
+
+    logger.warning(
+        f"position: short profit: {position['short']['upnl']}, long profit: {position['long']['upnl']}"
+    )
+
+    side = "buy" if last["buy"] == 1 else "sell" if last["sell"] == 1 else None
+    if side is None:
+        handle_tpsl(last, last_date, ex, symbol, position)
+        return side
+
+    # record has been used
+    if get_used_cache(last_date) != 1:
+        if handle_side(
+            ex,
+            last,
+            last_date,
+            symbol,
+            amount,
+            amount_max_limit,
+            position,
+            side,
+            reversals,
+        ):
+            set_used_cache(last_date, 1)
+
     return side
 
 

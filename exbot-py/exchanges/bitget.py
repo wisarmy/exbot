@@ -147,8 +147,10 @@ class BitgetExchange:
             self.exchange.create_market_order(
                 symbol, side, amount, params={"reduceOnly": True}
             )
+            return True
         except Exception as e:
             logger.exception(f"An unknown error occurred in close_position(): {e}")
+        return False
 
     def get_current_candle(self, symbol: str, timeframe="1m", retries=3, delay=60):
         for _ in range(retries):
