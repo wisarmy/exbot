@@ -27,7 +27,9 @@ def cal_profit(hold_side, position_spend, position_amount, close_price):
     return net_profit, fee
 
 
-def backtesting(df: DataFrame, reversals=False) -> DataFrame:
+def backtesting(
+    df: DataFrame, reversals=False, uamount=5.5, uamount_max=5.5
+) -> DataFrame:
     df["take_profit"] = pd.Series(dtype="str")
     df["stop_loss"] = pd.Series(dtype="str")
     # 持仓
@@ -47,7 +49,7 @@ def backtesting(df: DataFrame, reversals=False) -> DataFrame:
         if pd.notnull(row["buy"]) or pd.notnull(row["sell"]):
             # logger.info(f"{row.name}, close: {row['close']}, {row['buy']} {row['sell']}")
             signal = "buy" if pd.notnull(row["buy"]) else "sell"
-            per_amount = 5.5 / float(row["close"])
+            per_amount = uamount / float(row["close"])
             if hold_side is None:
                 hold_side = signal
                 position_spend = float(row["close"]) * per_amount
@@ -55,9 +57,14 @@ def backtesting(df: DataFrame, reversals=False) -> DataFrame:
                 logger.info(f"{row.name} open {signal} {row['close']} {per_amount}")
             else:
                 if signal == hold_side:
-                    # 如果波动小，不下单
-                    average_price = position_spend / position_amount
+                    # uamount max limit
+                    if position_spend >= uamount_max:
+                        logger.warning(
+                            f"{row.name} skip, position_spend: {position_spend} >= uamount_max: {uamount_max}"
+                        )
+                        continue
 
+                    average_price = position_spend / position_amount
                     position_spend += float(row["close"]) * per_amount
                     position_amount += per_amount
                     logger.info(
@@ -112,6 +119,19 @@ if __name__ == "__main__":
         help="timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M",
     )
     parser.add_argument("--reversals", action="store_true", help="reversals")
+    # uamount
+    parser.add_argument(
+        "--uamount",
+        type=float,
+        default=5.5,
+        help="The usdt amount to trade, > 5",
+    )
+    parser.add_argument(
+        "--uamount_max",
+        type=float,
+        default=5.5,
+        help="The usdt amount max limit to trade",
+    )
     # add arg verbose
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
     # add arg verbose
@@ -134,4 +154,4 @@ if __name__ == "__main__":
     df = chart.get_charting(ex, args.symbol, args.timeframe, args.days)
     df = with_strategy(args.strategy, ex, df, args, False)
     logger.info(df)
-    backtesting(df, args.reversals)
+    backtesting(df, args.reversals, args.uamount, args.uamount_max)
