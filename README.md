@@ -5,7 +5,7 @@
 
 ## What is Exbot?
 
-Exbot is a blockchain exchange bot written in rust that contains trading, charts, strategies, and alerts. As many ex/dex as possible support.
+Exbot is a blockchain exchange bot written in rust that contains trading, charts, strategies, and backtesting. As many ex/dex as possible support.
 
 # Exobt for python
 
