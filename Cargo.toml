@@ -1,7 +1,3 @@
 [workspace]
-members = [
-	"exbot",
-	"exbot-monitor",
-	"exbot-app/src-tauri",
-]
+members = ["exbot", "exbot-app/src-tauri"]
 resolver = "2"
