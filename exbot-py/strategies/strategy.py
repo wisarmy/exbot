@@ -230,41 +230,29 @@ def create_order_market(
 # handle tpsl
 def handle_tpsl(last, last_date, ex: BitgetExchange, symbol, position):
     # take profit
-    if (
-        handle_take_profit(last, ex, symbol, position)
-        and get_used_cache(last_date, "take_profit") != 1
-    ):
-        set_used_cache(last_date, 1, "take_profit")
+    if get_used_cache(last_date, "take_profit") != 1:
+        if handle_take_profit(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "take_profit")
     # take profit fix upnl
-    if (
-        handle_take_profit_fix_upnl(last, ex, symbol, position)
-        and get_used_cache(last_date, "take_profit_fix_upnl") != 1
-    ):
-        set_used_cache(last_date, 1, "take_profit_fix_upnl")
+    if get_used_cache(last_date, "take_profit_fix_upnl") != 1:
+        if handle_take_profit_fix_upnl(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "take_profit_fix_upnl")
     # take profit fix price urate
-    if (
-        handle_take_profit_fix_price_urate(last, ex, symbol, position)
-        and get_used_cache(last_date, "take_profit_fix_price_urate") != 1
-    ):
-        set_used_cache(last_date, 1, "take_profit_fix_price_urate")
+    if get_used_cache(last_date, "take_profit_fix_price_urate") != 1:
+        if handle_take_profit_fix_price_urate(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "take_profit_fix_price_urate")
     # stop loss
-    if (
-        handle_stop_loss(last, ex, symbol, position)
-        and get_used_cache(last_date, "stop_loss") != 1
-    ):
-        set_used_cache(last_date, 1, "stop_loss")
+    if get_used_cache(last_date, "stop_loss") != 1:
+        if handle_stop_loss(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "stop_loss")
     # stop loss fix upnl
-    if (
-        handle_stop_loss_fix_upnl(last, ex, symbol, position)
-        and get_used_cache(last_date, "stop_loss_fix_upnl") != 1
-    ):
-        set_used_cache(last_date, 1, "stop_loss_fix_upnl")
+    if get_used_cache(last_date, "stop_loss_fix_upnl") != 1:
+        if handle_stop_loss_fix_upnl(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "stop_loss_fix_upnl")
     # stop loss fix price urate
-    if (
-        handle_stop_loss_fix_price_urate(last, ex, symbol, position)
-        and get_used_cache(last_date, "stop_loss_fix_price_urate") != 1
-    ):
-        set_used_cache(last_date, 1, "stop_loss_fix_price_urate")
+    if get_used_cache(last_date, "stop_loss_fix_price_urate") != 1:
+        if handle_stop_loss_fix_price_urate(last, ex, symbol, position):
+            set_used_cache(last_date, 1, "stop_loss_fix_price_urate")
 
 
 # handle side
