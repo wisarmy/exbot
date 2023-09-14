@@ -1,4 +1,5 @@
 import datetime
+import os
 from pandas import DataFrame
 import pytz
 import talib
@@ -32,6 +33,8 @@ class macd:
 
     use_sell_signal = True
     sell_profit_only = False
+
+    condition_dea = os.getenv("CONDITION_DEA", 0)
 
     def populate_indicators(self, df: DataFrame) -> DataFrame:
         close_prices = df["close"].values  # 获取收盘价的数据
@@ -89,6 +92,8 @@ class macd:
 
         conditions = []
         conditions.append(df["cross"] == 1)
+        if self.condition_dea == "true":
+            conditions.append(df["dea"] < 0)
         self.filter_timeframe_threshold(df, conditions)
 
         if conditions:
@@ -111,6 +116,8 @@ class macd:
 
         conditions = []
         conditions.append(df["cross"] == -1)
+        if self.condition_dea == "true":
+            conditions.append(df["dea"] > 0)
         self.filter_timeframe_threshold(df, conditions)
 
         if conditions:
