@@ -19,7 +19,8 @@ class BitgetExchange:
         return self.exchange.market(symbol)["id"]
 
     def load_markets(self):
-        self.exchange.load_markets()
+        self.markets = self.exchange.load_markets()
+        return self.markets
 
     def id(self):
         return self.exchange.id
@@ -111,7 +112,8 @@ class BitgetExchange:
         hold_side: Literal["long", "short"],
     ):
         try:
-            trigger_price = round(trigger_price, 4)
+            precision_price = self.markets[symbol]["precision"]["price"]
+            trigger_price = int(trigger_price / precision_price) * precision_price
             self.client.mix_place_PositionsTPSL(
                 self.market_symbol(symbol=symbol),
                 marginCoin="USDT",

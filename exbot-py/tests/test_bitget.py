@@ -8,7 +8,7 @@ from exchanges import exchange
 def get_ex():
     config = load_config("configs/config.toml")
     ex = exchange.Exchange(config.exchange).get()
-    ex.load_markets()
+    markets = ex.load_markets()
     return ex
 
 
@@ -45,3 +45,18 @@ class TestMethods(unittest.TestCase):
 
         # ex.place_position_tpsl("XRP/USDT:USDT", "pos_loss", 0.52, "short")
         # ex.place_position_tpsl("XRP/USDT:USDT", "pos_profit", 0.42, "short")
+
+    def test_precision(self):
+        ex = get_ex()
+        symbol = "NEAR/USDT:USDT"
+        precision_price = ex.markets[symbol]["precision"]["price"]
+        assert precision_price == 0.0005
+        price = 0.9801
+        pprice = int(price / precision_price) * precision_price
+        assert pprice == 0.9800
+        price = 0.98046
+        pprice = int(price / precision_price) * precision_price
+        assert pprice == 0.9800
+        price = 0.98053
+        pprice = int(price / precision_price) * precision_price
+        assert pprice == 0.9805
