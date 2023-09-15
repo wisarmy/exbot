@@ -1,3 +1,4 @@
+from decimal import Decimal
 import ccxt
 from core.logger import logger
 import time
@@ -114,6 +115,9 @@ class BitgetExchange:
         try:
             precision_price = self.markets[symbol]["precision"]["price"]
             trigger_price = int(trigger_price / precision_price) * precision_price
+            decimal_places = abs(Decimal(str(precision_price)).as_tuple().exponent)
+            trigger_price = "{:.{}f}".format(trigger_price, decimal_places)
+
             self.client.mix_place_PositionsTPSL(
                 self.market_symbol(symbol=symbol),
                 marginCoin="USDT",

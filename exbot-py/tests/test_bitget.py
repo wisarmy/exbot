@@ -3,6 +3,7 @@ import unittest
 
 from config import load_config
 from exchanges import exchange
+from decimal import Decimal
 
 
 def get_ex():
@@ -60,3 +61,10 @@ class TestMethods(unittest.TestCase):
         price = 0.98053
         pprice = int(price / precision_price) * precision_price
         assert pprice == 0.9805
+
+        symbol = "XRP/USDT:USDT"
+        precision_price = ex.markets[symbol]["precision"]["price"]
+        decimal_places = abs(Decimal(str(precision_price)).as_tuple().exponent)
+        price = 0.43305000000000005
+        price = "{:.{}f}".format(price, decimal_places)
+        assert price == "0.43305"
