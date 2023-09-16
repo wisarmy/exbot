@@ -3,15 +3,21 @@ import os
 from pandas import DataFrame
 import pytz
 import talib
-import pandas as pd  # noqa
+import pandas as pd
+from strategies import strategy
+
+from strategies.istrategy import IStrategy  # noqa
 
 pd.options.mode.chained_assignment = None  # default='warn'
 from functools import reduce
 import numpy as np
 from core.logger import logger
 
+TAKE_PROFIT = os.getenv("TAKE_PROFIT", "false") == "true"
+STOP_LOSS = os.getenv("STOP_LOSS", "false") == "true"
 
-class macd:
+
+class macd(IStrategy):
     # NOTE: settings as of the 25th july 21
     # Buy hyperspace params:
     buy_params = {}
@@ -134,7 +140,7 @@ class macd:
         return df
 
     def populate_close_position(
-        self, df: DataFrame, take_profit=True, stop_loss=True
+        self, df: DataFrame, take_profit=False, stop_loss=False
     ) -> DataFrame:
         df["take_profit"] = pd.Series(dtype="str")
         df["stop_loss"] = pd.Series(dtype="str")
@@ -189,4 +195,12 @@ class macd:
                     if stop_loss:
                         df.loc[index, "stop_loss"] = open_signal
                         df.loc[index, "profit"] = profit
+        return df
+
+    def run(self, df, ex, args):
+        df = self.populate_indicators(df)
+        df = self.populate_buy_trend(df)
+        df = self.populate_sell_trend(df)
+        df = self.populate_close_position(df, TAKE_PROFIT, STOP_LOSS)
+        self.trade(ex, df, args)
         return df

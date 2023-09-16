@@ -1,16 +1,23 @@
 import datetime
+import os
 from pandas import DataFrame
 import pytz
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
-import pandas as pd  # noqa
+import pandas as pd
+from strategies import strategy
+
+from strategies.istrategy import IStrategy  # noqa
 
 pd.options.mode.chained_assignment = None  # default='warn'
 import technical.indicators as ftt
 from functools import reduce
 
+TAKE_PROFIT = os.getenv("TAKE_PROFIT", "false") == "true"
+STOP_LOSS = os.getenv("STOP_LOSS", "false") == "true"
 
-class ichiv1:
+
+class ichiv1(IStrategy):
     # NOTE: settings as of the 25th july 21
     # Buy hyperspace params:
     buy_params = {
@@ -252,8 +259,16 @@ class ichiv1:
         return dataframe
 
     def populate_close_position(
-        self, df: DataFrame, take_profit=True, stop_loss=True
+        self, df: DataFrame, take_profit=False, stop_loss=False
     ) -> DataFrame:
         df["take_profit"] = pd.Series(dtype="str")
         df["stop_loss"] = pd.Series(dtype="str")
+        return df
+
+    def run(self, df, ex, args):
+        df = self.populate_indicators(df)
+        df = self.populate_buy_trend(df)
+        df = self.populate_sell_trend(df)
+        df = self.populate_close_position(df, TAKE_PROFIT, STOP_LOSS)
+        self.trade(ex, df, args)
         return df

@@ -3,53 +3,38 @@ from core import chart
 from strategies import ichiv1, macd, strategy
 from core.logger import logger
 import plotly.graph_objects as go
+from typing import Dict
+
+from strategies.istrategy import IStrategy
+
+TAKE_PROFIT = os.getenv("TAKE_PROFIT", "false") == "true"
+STOP_LOSS = os.getenv("STOP_LOSS", "false") == "true"
+REVERSALS = os.getenv("REVERSALS", "false") == "true"
+
+strategys: Dict[str, IStrategy] = {
+    "macd": macd.macd(),
+    "ichiv1": ichiv1.ichiv1(),
+}
 
 
-def with_strategy(strategy_name, ex, df, args, trade=True):
+def with_strategy(strategy_name, ex, df, args):
     """
     :param strategy_name: strategy name
     :param ex: exchange
     :param df: ohlcv dataframe
     :param args:
         symbol: symbol
+        amount_type: amount_type
         amount: amount
         amount_max_limit: amount max limit
-        timeframe: timeframe
+        reversals: reversals
     :param fig: chart fig
     :return: dataframe
     """
-    match strategy_name:
-        case "macd":
-            stgy = macd.macd()
-            df = stgy.populate_indicators(df)
-            df = stgy.populate_buy_trend(df)
-            df = stgy.populate_sell_trend(df)
-            df = stgy.populate_close_position(
-                df,
-                os.getenv("TAKE_PROFIT", "false") == "true",
-                os.getenv("STOP_LOSS", "true") == "true",
-            )
-            if trade:
-                side = strategy.amount_limit(
-                    ex, df, args.symbol, args.amount, args.amount_max, reversals=True
-                )
-        case "ichiv1":
-            stgy = ichiv1.ichiv1()
-            df = stgy.populate_indicators(df)
-            df = stgy.populate_buy_trend(df)
-            df = stgy.populate_sell_trend(df)
-            df = stgy.populate_close_position(
-                df,
-                os.getenv("TAKE_PROFIT", "false") == "true",
-                os.getenv("STOP_LOSS", "true") == "true",
-            )
-            if trade:
-                side = strategy.uamount_limit(
-                    ex, df, args.symbol, args.uamount, args.uamount_max, reversals=False
-                )
-        case _:
-            logger.warning(f"strategy {strategy_name} not found")
-
+    if strategy_name not in strategys:
+        raise ValueError(f"Invalid strategy name: {strategy_name}")
+    stgy = strategys[strategy_name]
+    df = stgy.run(df, ex, args)
     return df
 
 

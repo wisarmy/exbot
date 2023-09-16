@@ -1,7 +1,5 @@
 import argparse
-import datetime
 import logging
-import time
 from config import load_config
 from core import chart
 from exchanges import exchange
@@ -119,19 +117,24 @@ if __name__ == "__main__":
         help="timeframe: 1m 5m 15m 30m 1h 4h 1d 1w 1M",
     )
     parser.add_argument("--reversals", action="store_true", help="reversals")
-    # uamount
     parser.add_argument(
-        "--uamount",
-        type=float,
-        default=5.5,
-        help="The usdt amount to trade, > 5",
+        "--amount_type",
+        type=str,
+        default="usdt",
+        choices=["quantity", "usdt"],
+        help="The amount type to trade",
     )
     parser.add_argument(
-        "--uamount_max",
-        type=float,
-        default=5.5,
-        help="The usdt amount max limit to trade",
+        "--amount", type=float, default=1, help="The symbol amount to trade"
     )
+    parser.add_argument(
+        "--amount_max",
+        type=float,
+        default=1,
+        help="The symbol amount max limit to trade",
+    )
+    # add debug
+    parser.add_argument("--debug", default=True, action="store_true", help="debug mode")
     # add arg verbose
     parser.add_argument("-v", "--verbose", action="store_true", help="verbose mode")
     # add arg verbose
@@ -152,6 +155,6 @@ if __name__ == "__main__":
     logger.info(f"exchange: {ex.id()}, args: {args}")
     # 获取图表实时数据
     df = chart.get_charting(ex, args.symbol, args.timeframe, args.days)
-    df = with_strategy(args.strategy, ex, df, args, False)
+    df = with_strategy(args.strategy, ex, df, args)
     logger.info(df)
-    backtesting(df, args.reversals, args.uamount, args.uamount_max)
+    backtesting(df, args.reversals, args.amount, args.amount_max)

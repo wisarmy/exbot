@@ -16,7 +16,7 @@ pd.set_option("display.width", 1000)
 def update(ex, args):
     # 获取图表实时数据
     df = chart.get_charting(ex, args.symbol, args.timeframe)
-    df = with_strategy(args.strategy, ex, df, args, args.debug == False)
+    df = with_strategy(args.strategy, ex, df, args)
     logger.debug(df)
     logger.info(
         f"symbol: {args.symbol}, updated: {datetime.datetime.fromtimestamp(chart.data_updated)}, [{df.index[-1]} {df['close'].iloc[-1]}]"
@@ -33,6 +33,13 @@ if __name__ == "__main__":
     )
     parser.add_argument("--strategy", type=str, default="", help="The strategy to use")
     parser.add_argument(
+        "--amount_type",
+        type=str,
+        default="quantity",
+        choices=["quantity", "usdt"],
+        help="The amount type to trade",
+    )
+    parser.add_argument(
         "--amount", type=float, default=1, help="The symbol amount to trade"
     )
     parser.add_argument(
@@ -41,19 +48,7 @@ if __name__ == "__main__":
         default=1,
         help="The symbol amount max limit to trade",
     )
-    # uamount
-    parser.add_argument(
-        "--uamount",
-        type=float,
-        default=5.5,
-        help="The usdt amount to trade, > 5",
-    )
-    parser.add_argument(
-        "--uamount_max",
-        type=float,
-        default=100,
-        help="The usdt amount max limit to trade",
-    )
+    parser.add_argument("--reversals", action="store_true", help="reversals")
     parser.add_argument(
         "-t",
         "--timeframe",
