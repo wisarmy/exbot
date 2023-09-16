@@ -4,9 +4,8 @@ from pandas import DataFrame
 import pytz
 import talib
 import pandas as pd
-from strategies import strategy
 
-from strategies.istrategy import IStrategy  # noqa
+from strategies.istrategy import IStrategy
 
 pd.options.mode.chained_assignment = None  # default='warn'
 from functools import reduce

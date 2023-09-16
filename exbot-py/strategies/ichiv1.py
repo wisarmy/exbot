@@ -5,9 +5,7 @@ import pytz
 import talib.abstract as ta
 import freqtrade.vendor.qtpylib.indicators as qtpylib
 import pandas as pd
-from strategies import strategy
-
-from strategies.istrategy import IStrategy  # noqa
+from strategies.istrategy import IStrategy
 
 pd.options.mode.chained_assignment = None  # default='warn'
 import technical.indicators as ftt

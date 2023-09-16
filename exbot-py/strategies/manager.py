@@ -7,10 +7,6 @@ from typing import Dict
 
 from strategies.istrategy import IStrategy
 
-TAKE_PROFIT = os.getenv("TAKE_PROFIT", "false") == "true"
-STOP_LOSS = os.getenv("STOP_LOSS", "false") == "true"
-REVERSALS = os.getenv("REVERSALS", "false") == "true"
-
 strategys: Dict[str, IStrategy] = {
     "macd": macd.macd(),
     "ichiv1": ichiv1.ichiv1(),

@@ -1,8 +1,6 @@
-import datetime
 import os
 from typing import Literal
 from exchanges.bitget import BitgetExchange
-import pytz
 from core.logger import logger
 from core.logger import setup_datalogger
 from collections import OrderedDict
