@@ -88,10 +88,11 @@ def backtesting(
                     else:
                         hold_side = None
 
-    profit, fee = cal_profit(hold_side, position_spend, position_amount, last_price)
-    logger.info(
-        f"unsettled position: position_spend: {position_spend}, position_amount: {position_amount}, profit: {profit}, fee: {fee}"
-    )
+    if hold_side is not None:
+        profit, fee = cal_profit(hold_side, position_spend, position_amount, last_price)
+        logger.info(
+            f"unsettled position: position_spend: {position_spend}, position_amount: {position_amount}, profit: {profit}, fee: {fee}"
+        )
 
     logger.info(f"backtesting total profit: {total_profit}")
     return df
