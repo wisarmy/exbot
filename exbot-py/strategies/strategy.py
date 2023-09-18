@@ -34,6 +34,10 @@ def signal_to_side(signal):
 
 
 def handle_take_profit(last, ex: BitgetExchange, symbol, position):
+    tp = os.getenv("TAKE_PROFIT", "false") == "true"
+    if not tp:
+        return False
+
     input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
     hold_side = signal_to_side(last["take_profit"])
     if hold_side is None:
@@ -58,6 +62,10 @@ def handle_take_profit(last, ex: BitgetExchange, symbol, position):
 
 
 def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
+    sl = os.getenv("STOP_LOSS", "false") == "true"
+    if not sl:
+        return False
+
     input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
     hold_side = signal_to_side(last["stop_loss"])
     if hold_side is None:

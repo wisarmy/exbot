@@ -12,9 +12,6 @@ from functools import reduce
 import numpy as np
 from core.logger import logger
 
-TAKE_PROFIT = os.getenv("TAKE_PROFIT", "false") == "true"
-STOP_LOSS = os.getenv("STOP_LOSS", "false") == "true"
-
 
 class macd(IStrategy):
     # NOTE: settings as of the 25th july 21
@@ -138,9 +135,7 @@ class macd(IStrategy):
 
         return df
 
-    def populate_close_position(
-        self, df: DataFrame, take_profit=False, stop_loss=False
-    ) -> DataFrame:
+    def populate_close_position(self, df: DataFrame) -> DataFrame:
         df["take_profit"] = pd.Series(dtype="str")
         df["stop_loss"] = pd.Series(dtype="str")
         # macd三连跌止盈止损
@@ -187,19 +182,17 @@ class macd(IStrategy):
                     f"{'take profit' if profit > 0 else 'stop loss'} [macd_fall_4]: {index}, [{open_signal} {open_price} {row['close']}], {profit}"
                 )
                 if profit > 0:
-                    if take_profit:
-                        df.loc[index, "take_profit"] = open_signal
-                        df.loc[index, "profit"] = profit
+                    df.loc[index, "take_profit"] = open_signal
+                    df.loc[index, "profit"] = profit
                 else:
-                    if stop_loss:
-                        df.loc[index, "stop_loss"] = open_signal
-                        df.loc[index, "profit"] = profit
+                    df.loc[index, "stop_loss"] = open_signal
+                    df.loc[index, "profit"] = profit
         return df
 
     def run(self, df, ex, args):
         df = self.populate_indicators(df)
         df = self.populate_buy_trend(df)
         df = self.populate_sell_trend(df)
-        df = self.populate_close_position(df, TAKE_PROFIT, STOP_LOSS)
+        df = self.populate_close_position(df)
         self.trade(ex, df, args)
         return df
