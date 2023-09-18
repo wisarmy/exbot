@@ -11,6 +11,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 from functools import reduce
 import numpy as np
 from core.logger import logger
+from typing import Literal
 
 
 class macd(IStrategy):
@@ -35,8 +36,6 @@ class macd(IStrategy):
 
     use_sell_signal = True
     sell_profit_only = False
-
-    condition_dea = os.getenv("CONDITION_DEA", 0)
 
     def populate_indicators(self, df: DataFrame) -> DataFrame:
         close_prices = df["close"].values  # 获取收盘价的数据
@@ -65,27 +64,31 @@ class macd(IStrategy):
         df["close_pct_change"] = df["close"].pct_change()
         return df
 
-    def filter_timeframe_threshold(self, df, conditions):
-        # 确认交叉信号
+    def condition_early_close_seconds(self, df, conditions):
+        condition_early_close_seconds = int(
+            os.getenv("CONDITION_EARLY_CLOSE_SECONDS", 0)
+        )
+
         timeframe_seconds = df.index.unique().to_series().diff().min().total_seconds()
-        if timeframe_seconds == 60:
-            threshold = 10
-        elif timeframe_seconds == 5 * 60:
-            threshold = 15
-        elif timeframe_seconds == 15 * 60:
-            threshold = 25
-        else:
-            threshold = 30
+        threshold = condition_early_close_seconds
         last_date = df.index[-1]
         next_date = last_date + datetime.timedelta(seconds=timeframe_seconds)
         now_date = datetime.datetime.now(tz=pytz.timezone("Asia/Shanghai"))
-        # 如果距离下次没在 threshold 内，去除 last_date 的信号
+        # early close of last candle
         if next_date - now_date > datetime.timedelta(seconds=threshold):
             conditions.append(df.index < last_date)
             df.loc[df.index >= last_date, "signal_by"] = pd.Series(
-                "removed_by_timeframe_threshold",
+                "removed_by_early_close",
                 index=df.index[df.index >= last_date],
             )
+
+    def condition_dea(self, df, conditions, signal: Literal["buy", "sell"]):
+        condition_dea = os.getenv("CONDITION_DEA", "false") == "true"
+        if condition_dea:
+            if signal == "buy":
+                conditions.append(df["dea"] < 0)
+            else:
+                conditions.append(df["dea"] > 0)
 
     def populate_buy_trend(self, df: DataFrame) -> DataFrame:
         if "signal" not in df:
@@ -94,9 +97,8 @@ class macd(IStrategy):
 
         conditions = []
         conditions.append(df["cross"] == 1)
-        if self.condition_dea == "true":
-            conditions.append(df["dea"] < 0)
-        self.filter_timeframe_threshold(df, conditions)
+        self.condition_dea(df, conditions, "buy")
+        self.condition_early_close_seconds(df, conditions)
 
         if conditions:
             df.loc[reduce(lambda x, y: x & y, conditions), "buy"] = 1
@@ -118,9 +120,10 @@ class macd(IStrategy):
 
         conditions = []
         conditions.append(df["cross"] == -1)
-        if self.condition_dea == "true":
-            conditions.append(df["dea"] > 0)
-        self.filter_timeframe_threshold(df, conditions)
+        self.condition_dea(df, conditions, "sell")
+        self.condition_early_close_seconds(df, conditions)
+
+        print(conditions)
 
         if conditions:
             df.loc[reduce(lambda x, y: x & y, conditions), "sell"] = 1
@@ -152,7 +155,7 @@ class macd(IStrategy):
         fee = 0
 
         conditions = []
-        self.filter_timeframe_threshold(df, conditions)
+        self.condition_early_close_seconds(df, conditions)
 
         for index, row in (
             df.loc[reduce(lambda x, y: x & y, conditions)].iterrows()

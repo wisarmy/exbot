@@ -132,31 +132,27 @@ class ichiv1(IStrategy):
 
         return dataframe
 
-    def filter_timeframe_threshold(self, df, conditions):
-        # 确认交叉信号
+    def condition_early_close_seconds(self, df, conditions):
+        condition_early_close_seconds = int(
+            os.getenv("CONDITION_EARLY_CLOSE_SECONDS", 0)
+        )
+
         timeframe_seconds = df.index.unique().to_series().diff().min().total_seconds()
-        if timeframe_seconds == 60:
-            threshold = 10
-        elif timeframe_seconds == 5 * 60:
-            threshold = 15
-        elif timeframe_seconds == 15 * 60:
-            threshold = 25
-        else:
-            threshold = 30
+        threshold = condition_early_close_seconds
         last_date = df.index[-1]
         next_date = last_date + datetime.timedelta(seconds=timeframe_seconds)
         now_date = datetime.datetime.now(tz=pytz.timezone("Asia/Shanghai"))
-        # 如果距离下次没在 threshold 内，去除 last_date 的信号
+        # early close of last candle
         if next_date - now_date > datetime.timedelta(seconds=threshold):
             conditions.append(df.index < last_date)
             df.loc[df.index >= last_date, "signal_by"] = pd.Series(
-                "removed_by_timeframe_threshold",
+                "removed_by_early_close",
                 index=df.index[df.index >= last_date],
             )
 
     def populate_buy_trend(self, dataframe: DataFrame) -> DataFrame:
         conditions = []
-        self.filter_timeframe_threshold(dataframe, conditions)
+        self.condition_early_close_seconds(dataframe, conditions)
 
         # Trending market
         if self.buy_params["buy_trend_above_senkou_level"] >= 1:
@@ -239,7 +235,7 @@ class ichiv1(IStrategy):
 
     def populate_sell_trend(self, dataframe: DataFrame) -> DataFrame:
         conditions = []
-        self.filter_timeframe_threshold(dataframe, conditions)
+        self.condition_early_close_seconds(dataframe, conditions)
 
         conditions.append(
             qtpylib.crossed_below(
