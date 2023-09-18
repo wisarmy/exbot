@@ -123,8 +123,6 @@ class macd(IStrategy):
         self.condition_dea(df, conditions, "sell")
         self.condition_early_close_seconds(df, conditions)
 
-        print(conditions)
-
         if conditions:
             df.loc[reduce(lambda x, y: x & y, conditions), "sell"] = 1
             conditions.append(df["close_pct_change"] >= -0.004)
