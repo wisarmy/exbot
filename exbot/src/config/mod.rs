@@ -29,9 +29,9 @@ impl FromStr for Config {
     }
 }
 
-fn load() -> &'static RwLock<Option<Config>> {
+fn load(filename: &str) -> &'static RwLock<Option<Config>> {
     CONFIG.get_or_init(|| {
-        let config_path = Config::default().config_path();
+        let config_path = Config::default().config_path(filename);
         info!("Loading config {}", config_path.display());
         RwLock::new(
             fs::read_to_string(&config_path)
@@ -47,41 +47,44 @@ fn load() -> &'static RwLock<Option<Config>> {
 }
 
 #[cfg(not(feature = "async_config"))]
-pub fn with_config<T, F>(f: impl FnOnce(&Config) -> T) -> T {
-    f(load().read().unwrap().as_ref().unwrap())
+pub fn with_config<T, F>(filename: &str, f: impl FnOnce(&Config) -> T) -> T {
+    f(load(filename).read().unwrap().as_ref().unwrap())
 }
 #[cfg(feature = "async_config")]
-pub async fn with_config<T, F, Fut>(f: F) -> T
+pub async fn with_config<T, F, Fut>(filename: &str, f: F) -> T
 where
     F: FnOnce(Config) -> Fut,
     Fut: Future<Output = T>,
 {
-    f(load().read().unwrap().as_ref().unwrap().clone()).await
+    f(load(filename).read().unwrap().as_ref().unwrap().clone()).await
 }
 
 impl Config {
-    pub fn init(&self) -> Result<()> {
-        if self.config_path().exists() {
-            return Err(exbot_error!("exbot config file exbot.toml already exists!"))
-                .inspect_err(|e| error!("{}", e));
+    pub fn init(&self, filename: &str) -> Result<()> {
+        if self.config_path(filename).exists() {
+            return Err(exbot_error!(
+                "exbot config file {} already exists!",
+                filename
+            ))
+            .inspect_err(|e| error!("{}", e));
         }
         fs::create_dir_all(EXBOT_PATH.as_path())
             .inspect_err(|e| error!("Create dir {:?}: {}", EXBOT_PATH, e))?;
-        self.save_to_file()?;
+        self.save_to_file(filename)?;
         info!("initializing exbot at {}", EXBOT_PATH.display());
         Ok(())
     }
     /// config path
-    fn config_path(&self) -> PathBuf {
-        EXBOT_PATH.join("exbot.toml")
+    fn config_path(&self, filename: &str) -> PathBuf {
+        EXBOT_PATH.join(filename)
     }
     /// save file
-    pub fn save_to_file(&self) -> Result<()> {
+    pub fn save_to_file(&self, filename: &str) -> Result<()> {
         let config_string =
             toml::to_string(&self).inspect_err(|e| error!("Toml serialize: {}", e))?;
 
-        fs::write(self.config_path(), config_string)
-            .inspect_err(|e| error!("Write config file {:?}: {}", self.config_path(), e))?;
+        fs::write(self.config_path(filename), config_string)
+            .inspect_err(|e| error!("Write config file {:?}: {}", self.config_path(filename), e))?;
         Ok(())
     }
 }

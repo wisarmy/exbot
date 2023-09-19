@@ -7,8 +7,6 @@ use exbot::{
 use tracing::{debug, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod sync_data;
-
 /// Exbot program
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
@@ -54,13 +52,12 @@ async fn main() -> Result<()> {
             Config {
                 storage: storage_config,
             }
-            .init()?;
+            .init("exbot.toml")?;
         }
         Command::Daemon => {
             info!("Initializing daemon");
-            config::with_config(|c| async move {
+            config::with_config("exbot.toml", |c| async move {
                 debug!("With config: {:?}", c);
-                sync_data::kline(c).await;
             })
             .await;
         }

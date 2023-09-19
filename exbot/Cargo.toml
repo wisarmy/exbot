@@ -24,3 +24,10 @@ home = "0.5.4"
 [features]
 default = ["async_config"]
 async_config=[]
+
+[[bin]]
+name="mockex"
+path = "src/bin/mockex.rs"
+[[bin]]
+name="exbot"
+path = "src/bin/main.rs"

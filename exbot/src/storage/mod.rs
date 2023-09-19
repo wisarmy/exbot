@@ -20,6 +20,7 @@ pub enum DbType {
     #[default]
     CeresDb,
     Redis,
+    Sqlite,
 }
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct Config {
@@ -33,6 +34,7 @@ pub async fn init(c: Config) -> Result<()> {
             let store = CeresDb::new(c.db_endpoint);
             store.init().await
         }
+        DbType::Sqlite => Ok(()),
         _ => Err(exbot_error!("not support db type")),
     }
     .inspect_err(|e| error!("init err: {:?}", e))
