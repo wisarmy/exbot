@@ -1,0 +1,13 @@
+[package]
+name = "exbot_mockex"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "exbot_mockex"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.19.2", features = ["extension-module"] }
