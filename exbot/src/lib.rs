@@ -3,4 +3,5 @@ pub mod apis;
 pub mod client;
 pub mod config;
 pub mod error;
+pub mod services;
 pub mod storage;

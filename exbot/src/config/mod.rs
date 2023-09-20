@@ -7,6 +7,8 @@ use tracing::{error, info};
 
 use crate::{error::Result, exbot_error, storage};
 
+pub mod mockex;
+
 const EXBOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let mut exbot_path = home_dir().unwrap().join(".exbot");
     if let Some(env_exbot_path) = std::env::var_os("EXBOT_PATH") {
@@ -14,11 +16,17 @@ const EXBOT_PATH: Lazy<PathBuf> = Lazy::new(|| {
     };
     exbot_path
 });
+
 pub(crate) static CONFIG: OnceCell<RwLock<Option<Config>>> = OnceCell::new();
+
+pub fn root_path() -> PathBuf {
+    EXBOT_PATH.clone()
+}
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Config {
-    pub storage: storage::Config,
+    pub storage: Option<storage::Config>,
+    pub mockex: Option<mockex::MockexConfig>,
 }
 
 impl FromStr for Config {

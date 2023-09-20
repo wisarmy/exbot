@@ -20,8 +20,6 @@ pub enum ExbotError {
     SerdeJson(#[from] serde_json::Error),
     #[error("reqwest error")]
     Reqwest(#[from] reqwest::Error),
-    #[error("ceresdb client error")]
-    CeresDb(#[from] ceresdb_client::Error),
 }
 
 #[macro_export]
