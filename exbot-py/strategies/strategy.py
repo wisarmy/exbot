@@ -238,7 +238,7 @@ def create_order_market(
     hold_side = signal_to_side(side)
     open_price = entry_price if entry_price > 0 else price
 
-    if create_order_condition_price_loss_urate(hold_side, open_price, price) is False:
+    if create_order_condition_price_loss_urate(hold_side, entry_price, price) is False:
         return False
 
     stop_loss_urate = float(os.getenv("POSITION_STOP_LOSS_URATE", 0.1))
