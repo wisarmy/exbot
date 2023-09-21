@@ -201,6 +201,32 @@ def handle_stop_loss_fix_price_urate(last, ex: BitgetExchange, symbol, position)
     return False
 
 
+# create_order condition: price loss urate
+def create_order_condition_price_loss_urate(
+    hold_side: Literal["short", "long"], entry_price, price, default_urate=0
+):
+    # no position
+    if entry_price == 0:
+        return True
+    loss_urate = float(
+        os.getenv("CREATE_ORDER_CONDITION_PRICE_LOSS_URATE", default_urate)
+    )
+    if loss_urate == 0:
+        return True
+    floating_urate = round(abs(entry_price - price) / entry_price, 3)
+
+    if floating_urate >= loss_urate:
+        if (hold_side == "long" and price < entry_price) or (
+            hold_side == "short" and price > entry_price
+        ):
+            return True
+
+    logger.warning(
+        f"not satisfied create_order_condition_price_loss_urate[{hold_side}]: {floating_urate} >= {loss_urate} and price: {price} {'<' if hold_side == 'long' else '>'} entry_price: {entry_price}"
+    )
+    return False
+
+
 def create_order_market(
     ex: BitgetExchange,
     symbol: str,
@@ -209,7 +235,12 @@ def create_order_market(
     price: float,
     entry_price=0.0,
 ):
+    hold_side = signal_to_side(side)
     open_price = entry_price if entry_price > 0 else price
+
+    if create_order_condition_price_loss_urate(hold_side, open_price, price) is False:
+        return False
+
     stop_loss_urate = float(os.getenv("POSITION_STOP_LOSS_URATE", 0.1))
     stop_loss_trigger_price = (
         open_price * (1 + stop_loss_urate)
@@ -228,9 +259,10 @@ def create_order_market(
     )
     ex.create_order_market(symbol, side, amount, price)
     # position tpsl
-    hold_side = signal_to_side(side)
     ex.place_position_tpsl(symbol, "pos_loss", stop_loss_trigger_price, hold_side)
     ex.place_position_tpsl(symbol, "pos_profit", take_profit_trigger_price, hold_side)
+
+    return True
 
 
 # handle tpsl
@@ -299,13 +331,21 @@ def handle_side(
                     return False
                 # 反向开单
                 if reversals:
-                    create_order_market(ex, symbol, "buy", amount, last_price)
+                    if (
+                        create_order_market(ex, symbol, "buy", amount, last_price)
+                        is False
+                    ):
+                        return False
 
             else:
                 if long_position_amount < amount_max_limit:
-                    create_order_market(
-                        ex, symbol, "buy", amount, last_price, long_entry_price
-                    )
+                    if (
+                        create_order_market(
+                            ex, symbol, "buy", amount, last_price, long_entry_price
+                        )
+                        is False
+                    ):
+                        return False
                 else:
                     # 超出最大仓位
                     logger.info(f"long position is max: {long_position_amount}")
@@ -324,12 +364,20 @@ def handle_side(
                     return False
                 # 反向开单
                 if reversals:
-                    create_order_market(ex, symbol, "sell", amount, last_price)
+                    if (
+                        create_order_market(ex, symbol, "sell", amount, last_price)
+                        is False
+                    ):
+                        return False
             else:
                 if short_position_amount < amount_max_limit:
-                    create_order_market(
-                        ex, symbol, "sell", amount, last_price, short_entry_price
-                    )
+                    if (
+                        create_order_market(
+                            ex, symbol, "sell", amount, last_price, short_entry_price
+                        )
+                        is False
+                    ):
+                        return False
                 else:
                     # 超出最大仓位
                     logger.info(f"short position is max: {short_position_amount}")

@@ -1,9 +1,9 @@
-import logging
 import unittest
 
 from config import load_config
 from exchanges import exchange
 from decimal import Decimal
+from strategies import strategy
 
 
 def get_ex():
@@ -68,3 +68,21 @@ class TestMethods(unittest.TestCase):
         price = 0.43305000000000005
         price = "{:.{}f}".format(price, decimal_places)
         assert price == "0.43305"
+
+    def test_order(self):
+        ex = get_ex()
+        # symbol = "NEAR/USDT:USDT"
+        # orders = ex.get_open_orders(symbol)
+
+    def test_create_order_conditions(self):
+        bl = strategy.create_order_condition_price_loss_urate("long", 1.15, 1.2, 0.005)
+        assert bl == False
+        bl = strategy.create_order_condition_price_loss_urate("long", 1.15, 1.2, 0)
+        assert bl == True
+
+        bl = strategy.create_order_condition_price_loss_urate(
+            "long", 1.15, 1.145, 0.005
+        )
+        assert bl == False
+        bl = strategy.create_order_condition_price_loss_urate("long", 1.15, 1.14, 0.005)
+        assert bl == True

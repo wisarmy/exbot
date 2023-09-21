@@ -49,6 +49,8 @@ class BitgetExchange:
         open_orders = []
         try:
             orders = self.exchange.fetch_open_orders(symbol)
+            # import json
+
             # print(f"Raw orders: {json.dumps(orders, indent=4)}")
             for order in orders:
                 if "info" in order:
