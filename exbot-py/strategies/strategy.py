@@ -234,12 +234,19 @@ def create_order_market(
     amount: float,
     price: float,
     entry_price=0.0,
+    position_amount=0,
 ):
     hold_side = signal_to_side(side)
     open_price = entry_price if entry_price > 0 else price
 
     if create_order_condition_price_loss_urate(hold_side, entry_price, price) is False:
-        return False
+        if position_amount >= amount:
+            return False
+        else:
+            logger.info(
+                "position amount[{position_amount}] is to low, replenishment position to amount: {amount}"
+            )
+            amount = amount - position_amount
 
     stop_loss_urate = float(os.getenv("POSITION_STOP_LOSS_URATE", 0.1))
     stop_loss_trigger_price = (
@@ -341,7 +348,13 @@ def handle_side(
                 if long_position_amount < amount_max_limit:
                     if (
                         create_order_market(
-                            ex, symbol, "buy", amount, last_price, long_entry_price
+                            ex,
+                            symbol,
+                            "buy",
+                            amount,
+                            last_price,
+                            long_entry_price,
+                            long_position_amount,
                         )
                         is False
                     ):
@@ -373,7 +386,13 @@ def handle_side(
                 if short_position_amount < amount_max_limit:
                     if (
                         create_order_market(
-                            ex, symbol, "sell", amount, last_price, short_entry_price
+                            ex,
+                            symbol,
+                            "sell",
+                            amount,
+                            last_price,
+                            short_entry_price,
+                            short_position_amount,
                         )
                         is False
                     ):
