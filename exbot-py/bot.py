@@ -40,12 +40,12 @@ if __name__ == "__main__":
         help="The amount type to trade",
     )
     parser.add_argument(
-        "--amount", type=float, default=1, help="The symbol amount to trade"
+        "--amount", type=float, required=True, help="The symbol amount to trade"
     )
     parser.add_argument(
         "--amount_max",
         type=float,
-        default=1,
+        required=True,
         help="The symbol amount max limit to trade",
     )
     parser.add_argument("--reversals", action="store_true", help="reversals")

@@ -25,9 +25,7 @@ def cal_profit(hold_side, position_spend, position_amount, close_price):
     return net_profit, fee
 
 
-def backtesting(
-    df: DataFrame, reversals=False, uamount=5.5, uamount_max=5.5
-) -> DataFrame:
+def backtesting(df: DataFrame, reversals=False, uamount=6, uamount_max=6) -> DataFrame:
     df["take_profit"] = pd.Series(dtype="str")
     df["stop_loss"] = pd.Series(dtype="str")
     # 持仓

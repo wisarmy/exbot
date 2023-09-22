@@ -247,6 +247,9 @@ def create_order_market(
                 "position amount[{position_amount}] is to low, replenishment position to amount: {amount}"
             )
             amount = amount - position_amount
+    if amount * price < 6:
+        logger.warning(f"amount[{amount}] * price[{price}] < 6, not create order")
+        return False
 
     stop_loss_urate = float(os.getenv("POSITION_STOP_LOSS_URATE", 0.1))
     stop_loss_trigger_price = (

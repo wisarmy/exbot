@@ -85,11 +85,11 @@ class BitgetExchange:
         params: dict = {},
     ):
         try:
-            return self.exchange.create_order(
-                symbol, "limit", side, amount, price, params
-            )
+            self.exchange.create_order(symbol, "limit", side, amount, price, params)
+            return True
         except Exception as e:
             logger.exception(f"An unknown error occurred in create_order_limit(): {e}")
+        return False
 
     def create_order_market(
         self,
@@ -100,11 +100,12 @@ class BitgetExchange:
         params: dict = {},
     ):
         try:
-            return self.exchange.create_order(
-                symbol, "market", side, amount, None, params
-            )
+            self.exchange.create_order(symbol, "market", side, amount, None, params)
+            return True
         except Exception as e:
             logger.exception(f"An unknown error occurred in create_order_market(): {e}")
+
+        return False
 
     # position tpsl
     def place_position_tpsl(
