@@ -345,7 +345,7 @@ def handle_side(
                         ):
                             return False
             else:
-                logger.warning(f"close short failed.")
+                logger.warning(f"close {reverse_side} failed.")
                 return False
         else:
             if position_amount < amount_max_limit:
@@ -364,7 +364,7 @@ def handle_side(
                     return False
             else:
                 # 超出最大仓位
-                logger.info(f"long position is max: {position_amount}")
+                logger.info(f"{hold_side} position is max: {position_amount}")
         return True
     except Exception as e:
         logger.exception(f"An unknown error occurred in handle_side: {e}")
