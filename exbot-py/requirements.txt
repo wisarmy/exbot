@@ -1,4 +1,4 @@
-ccxt==4.0.103
+ccxt==4.0.106
 pydantic
 pandas
 ta-lib
