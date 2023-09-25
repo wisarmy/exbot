@@ -38,7 +38,7 @@ def handle_take_profit(last, ex: BitgetExchange, symbol, position):
     if not tp:
         return False
 
-    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    input_amount = float(os.getenv("TPSL_AMOUNT", 0))
     hold_side = signal_to_side(last["take_profit"])
     if hold_side is None:
         return False
@@ -66,7 +66,7 @@ def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
     if not sl:
         return False
 
-    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    input_amount = float(os.getenv("TPSL_AMOUNT", 0))
     hold_side = signal_to_side(last["stop_loss"])
     if hold_side is None:
         return False
@@ -91,7 +91,7 @@ def handle_stop_loss(last, ex: BitgetExchange, symbol, position):
 
 def handle_take_profit_fix_upnl(last, ex: BitgetExchange, symbol, position):
     fix_upnl = float(os.getenv("TAKE_PROFIT_FIX_UPNL", 0))
-    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    input_amount = float(os.getenv("TPSL_AMOUNT", 0))
     if fix_upnl > 0:
         for side in ["short", "long"]:
             position_amount = position[side]["qty"]
@@ -113,7 +113,7 @@ def handle_take_profit_fix_upnl(last, ex: BitgetExchange, symbol, position):
 
 def handle_stop_loss_fix_upnl(last, ex: BitgetExchange, symbol, position):
     fix_upnl = float(os.getenv("STOP_LOSS_FIX_UPNL", 0))
-    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    input_amount = float(os.getenv("TPSL_AMOUNT", 0))
     if fix_upnl < 0:
         for side in ["short", "long"]:
             position_amount = position[side]["qty"]
@@ -135,7 +135,7 @@ def handle_stop_loss_fix_upnl(last, ex: BitgetExchange, symbol, position):
 
 def handle_take_profit_fix_price_urate(last, ex: BitgetExchange, symbol, position):
     fix_urate = float(os.getenv("TAKE_PROFIT_FIX_PRICE_URATE", 0))
-    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    input_amount = float(os.getenv("TPSL_AMOUNT", 0))
     if fix_urate > 0:
         for side in ["short", "long"]:
             position_amount = position[side]["qty"]
@@ -169,7 +169,7 @@ def handle_take_profit_fix_price_urate(last, ex: BitgetExchange, symbol, positio
 
 def handle_stop_loss_fix_price_urate(last, ex: BitgetExchange, symbol, position):
     fix_urate = float(os.getenv("STOP_LOSS_FIX_PRICE_URATE", 0))
-    input_amount = float(os.getenv("CLOSE_AMOUNT", 0))
+    input_amount = float(os.getenv("TPSL_AMOUNT", 0))
     if fix_urate > 0:
         for side in ["short", "long"]:
             position_amount = position[side]["qty"]
@@ -334,18 +334,22 @@ def handle_side(
                 logger.info(
                     f"close short: {last_price}, profit: {position['short']['upnl']}"
                 )
-                if ex.close_position(symbol, "buy", short_position_amount):
-                    logger.info(f"all short position have been closed.")
+                close_amount = float(os.getenv("CLOSE_AMOUNT", short_position_amount))
+                if ex.close_position(symbol, "buy", close_amount):
+                    if close_amount >= short_position_amount:
+                        logger.info(f"all short position have been closed.")
+                        # 反向开单
+                        if reversals:
+                            if (
+                                create_order_market(
+                                    ex, symbol, "buy", amount, last_price
+                                )
+                                is False
+                            ):
+                                return False
                 else:
                     logger.warning(f"close short failed.")
                     return False
-                # 反向开单
-                if reversals:
-                    if (
-                        create_order_market(ex, symbol, "buy", amount, last_price)
-                        is False
-                    ):
-                        return False
 
             else:
                 if long_position_amount < amount_max_limit:
@@ -373,18 +377,22 @@ def handle_side(
                 logger.info(
                     f"close long: {last_price}, profit: {position['long']['upnl']}"
                 )
+                close_amount = float(os.getenv("CLOSE_AMOUNT", long_position_amount))
                 if ex.close_position(symbol, "sell", long_position_amount):
-                    logger.info(f"all long position have been closed.")
+                    if close_amount >= long_position_amount:
+                        logger.info(f"all long position have been closed.")
+                        # 反向开单
+                        if reversals:
+                            if (
+                                create_order_market(
+                                    ex, symbol, "sell", amount, last_price
+                                )
+                                is False
+                            ):
+                                return False
                 else:
                     logger.warning(f"close long failed.")
                     return False
-                # 反向开单
-                if reversals:
-                    if (
-                        create_order_market(ex, symbol, "sell", amount, last_price)
-                        is False
-                    ):
-                        return False
             else:
                 if short_position_amount < amount_max_limit:
                     if (
