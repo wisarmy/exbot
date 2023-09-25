@@ -316,102 +316,55 @@ def handle_side(
     reversals=False,
 ):
     last_price = float(last["close"])
-    short_position_amount = position["short"]["qty"]
-    long_position_amount = position["long"]["qty"]
-    short_entry_price = position["short"]["entry_price"]
-    long_entry_price = position["long"]["entry_price"]
-
-    logger.info(f"strategy [{side}] signal: [{last_date} {last['close']}]")
+    logger.info(f"strategy [{side}] signal: [{last_date} {last_price}]")
     # 如果有新的信号，先取消所有订单
     ex.cancel_orders(symbol)
 
     try:
-        # 判断是否有买入信号
-        if side == "buy":
-            # 判断是否有空仓
-            if short_position_amount > 0:
-                # 平空
-                logger.info(
-                    f"close short: {last_price}, profit: {position['short']['upnl']}"
-                )
-                close_amount = float(os.getenv("CLOSE_AMOUNT", short_position_amount))
-                if ex.close_position(symbol, "buy", close_amount):
-                    if close_amount >= short_position_amount:
-                        logger.info(f"all short position have been closed.")
-                        # 反向开单
-                        if reversals:
-                            if (
-                                create_order_market(
-                                    ex, symbol, "buy", amount, last_price
-                                )
-                                is False
-                            ):
-                                return False
-                else:
-                    logger.warning(f"close short failed.")
-                    return False
+        hold_side = signal_to_side(side)
+        position_amount = position[hold_side]["qty"]
+        entry_price = position[hold_side]["entry_price"]
+        # reverse hold side
+        reverse_side = "short" if hold_side == "long" else "long"
+        reverse_position_amount = position[reverse_side]["qty"]
+        reverse_upnl = position[reverse_side]["upnl"]
 
+        if reverse_position_amount > 0:
+            close_amount = float(os.getenv("CLOSE_AMOUNT", reverse_position_amount))
+            logger.info(
+                f"close {reverse_side}: {last_price}, amount: {close_amount}, profit: {reverse_upnl}"
+            )
+            if ex.close_position(symbol, side, close_amount):
+                if close_amount >= reverse_position_amount:
+                    logger.info(f"all {reverse_side} position have been closed.")
+                    # 反向开单
+                    if reversals:
+                        if (
+                            create_order_market(ex, symbol, side, amount, last_price)
+                            is False
+                        ):
+                            return False
             else:
-                if long_position_amount < amount_max_limit:
-                    if (
-                        create_order_market(
-                            ex,
-                            symbol,
-                            "buy",
-                            amount,
-                            last_price,
-                            long_entry_price,
-                            long_position_amount,
-                        )
-                        is False
-                    ):
-                        return False
-                else:
-                    # 超出最大仓位
-                    logger.info(f"long position is max: {long_position_amount}")
-
-        elif side == "sell":
-            # 判断是否有多仓
-            if long_position_amount > 0:
-                # 平多
-                logger.info(
-                    f"close long: {last_price}, profit: {position['long']['upnl']}"
-                )
-                close_amount = float(os.getenv("CLOSE_AMOUNT", long_position_amount))
-                if ex.close_position(symbol, "sell", long_position_amount):
-                    if close_amount >= long_position_amount:
-                        logger.info(f"all long position have been closed.")
-                        # 反向开单
-                        if reversals:
-                            if (
-                                create_order_market(
-                                    ex, symbol, "sell", amount, last_price
-                                )
-                                is False
-                            ):
-                                return False
-                else:
-                    logger.warning(f"close long failed.")
+                logger.warning(f"close short failed.")
+                return False
+        else:
+            if position_amount < amount_max_limit:
+                if (
+                    create_order_market(
+                        ex,
+                        symbol,
+                        side,
+                        amount,
+                        last_price,
+                        entry_price,
+                        position_amount,
+                    )
+                    is False
+                ):
                     return False
             else:
-                if short_position_amount < amount_max_limit:
-                    if (
-                        create_order_market(
-                            ex,
-                            symbol,
-                            "sell",
-                            amount,
-                            last_price,
-                            short_entry_price,
-                            short_position_amount,
-                        )
-                        is False
-                    ):
-                        return False
-                else:
-                    # 超出最大仓位
-                    logger.info(f"short position is max: {short_position_amount}")
-
+                # 超出最大仓位
+                logger.info(f"long position is max: {position_amount}")
         return True
     except Exception as e:
         logger.exception(f"An unknown error occurred in handle_side: {e}")
