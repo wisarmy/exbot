@@ -1,15 +1,26 @@
 use std::{env, net::SocketAddr};
 
-use axum::{response::Html, routing::get, Router};
+use axum::{
+    body::Body,
+    http::{HeaderValue, Method, Request},
+    middleware::{from_fn, Next},
+    response::{Html, IntoResponse, Response},
+    routing::{get, post},
+    Router,
+};
 use clap::{Parser, Subcommand};
 use exbot::{
     config::{self, Config},
     error::Result,
+    services::mockex_service,
     storage::{self, DbType},
 };
 use sqlx::SqlitePool;
+use tokio::signal;
+use tower_http::cors::{Any, CorsLayer};
 use tracing::{debug, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use uuid::Uuid;
 
 /// Exbot mock exchange program
 #[derive(Parser, Debug)]
@@ -61,10 +72,26 @@ async fn main() -> Result<()> {
             info!("Initializing daemon");
             config::with_config("mockex.toml", |c| async move {
                 debug!("With config: {:?}", c);
-                let _pool = SqlitePool::connect(c.storage.unwrap().db_endpoint.as_str())
+                let pool = SqlitePool::connect(c.storage.unwrap().db_endpoint.as_str())
                     .await
                     .unwrap();
-                let app = Router::new().route("/", get(handler));
+                let app = Router::new()
+                    .route("/", get(handler))
+                    .route("/mix/place_order", post(mockex_service::create_order))
+                    .with_state(pool)
+                    .layer(from_fn(add_request_id))
+                    .layer(
+                        CorsLayer::new()
+                            .allow_origin(Any)
+                            .allow_methods(vec![
+                                Method::GET,
+                                Method::POST,
+                                Method::OPTIONS,
+                                Method::PUT,
+                                Method::DELETE,
+                            ])
+                            .allow_headers(Any),
+                    );
 
                 let addr = c
                     .mockex
@@ -76,6 +103,7 @@ async fn main() -> Result<()> {
                 tracing::info!("listening on {}", addr);
                 axum::Server::bind(&addr)
                     .serve(app.into_make_service())
+                    .with_graceful_shutdown(shutdown_signal())
                     .await
                     .unwrap()
             })
@@ -87,4 +115,43 @@ async fn main() -> Result<()> {
 
 async fn handler() -> Html<&'static str> {
     Html("<h1>Exbot Mockex!</h1>")
+}
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        signal::unix::signal(signal::unix::SignalKind::terminate())
+            .expect("failed to install signal handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => {},
+        _ = terminate => {},
+    }
+
+    println!("signal received, starting graceful shutdown");
+}
+
+pub async fn add_request_id(
+    mut request: Request<Body>,
+    next: Next<Body>,
+) -> std::result::Result<impl IntoResponse, Response> {
+    let uuid = Uuid::new_v4();
+
+    request.headers_mut().insert(
+        "request_id",
+        HeaderValue::from_str(&uuid.to_string()).unwrap(),
+    );
+
+    Ok(next.run(request).await)
 }

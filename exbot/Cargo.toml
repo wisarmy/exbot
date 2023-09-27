@@ -25,6 +25,9 @@ sqlx = { version = "0.7.1", features = [
     "tls-rustls",
 ] }
 axum = "0.6.20"
+tower = "0.4.13"
+tower-http = { version = "0.2", features = ["map-request-body", "util", "cors"] }
+uuid = { version = "1.4.1", features = ["v4", "fast-rng", "macro-diagnostics"] }
 
 [features]
 default = ["async_config"]
