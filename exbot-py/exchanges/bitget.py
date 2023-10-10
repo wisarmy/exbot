@@ -2,7 +2,6 @@ from decimal import Decimal
 import ccxt
 from core.logger import logger
 import time
-from ccxt.base.errors import RateLimitExceeded
 from typing import Literal
 from pybitget import Client
 
@@ -170,13 +169,13 @@ class BitgetExchange:
 
                 return current_candle
 
-            except RateLimitExceeded:
+            except Exception as e:
                 logger.exception(
-                    "Rate limit exceeded... sleeping for {} seconds".format(delay)
+                    "Error occurred ({}), retry after {} seconds".format(e, delay)
                 )
                 time.sleep(delay)
 
-        raise RateLimitExceeded(
+        raise Exception(
             "Failed to fetch candle data after {} retries".format(retries)
         )
 
@@ -190,13 +189,13 @@ class BitgetExchange:
                 )
                 return ohlcv
 
-            except RateLimitExceeded:
+            except Exception as e:
                 logger.exception(
-                    "Rate limit exceeded... sleeping for {} seconds".format(delay)
+                    "Error occurred ({}), retry after {} seconds".format(e, delay)
                 )
                 time.sleep(delay)
 
-        raise RateLimitExceeded(
+        raise Exception(
             "Failed to fetch candle data after {} retries".format(retries)
         )
 
