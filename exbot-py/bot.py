@@ -15,7 +15,7 @@ pd.set_option("display.width", 1000)
 
 def update(ex, args):
     # 获取图表实时数据
-    df = chart.get_charting(ex, args.symbol, args.timeframe)
+    df = chart.get_charting(ex, args.symbol, args.timeframe, days=3)
     df = with_strategy(args.strategy, ex, df, args)
     logger.debug(df)
     logger.info(
