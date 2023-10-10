@@ -158,7 +158,7 @@ class BitgetExchange:
             logger.exception(f"An unknown error occurred in close_position(): {e}")
         return False
 
-    def get_current_candle(self, symbol: str, timeframe="1m", retries=3, delay=60):
+    def get_current_candle(self, symbol: str, timeframe="1m", retries=3, delay=3):
         for _ in range(retries):
             try:
                 # Fetch the most recent 2 candles
@@ -180,7 +180,7 @@ class BitgetExchange:
         )
 
     def get_candles(
-        self, symbol: str, timeframe="1m", since=None, limit=10, retries=3, delay=60
+        self, symbol: str, timeframe="1m", since=None, limit=10, retries=3, delay=3
     ):
         for _ in range(retries):
             try:
