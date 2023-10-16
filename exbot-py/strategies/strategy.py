@@ -244,7 +244,7 @@ def create_order_market(
             return False
         else:
             logger.info(
-                "position amount[{position_amount}] is to low, replenishment position to amount: {amount}"
+                f"position amount[{position_amount}] is to low, replenishment position to amount: {amount}"
             )
             amount = amount - position_amount
     if amount * price < 6:
