@@ -2,6 +2,11 @@
 name = "exbot"
 version = "0.1.0"
 edition = "2021"
+authors = ["wisarmy <wisarmy@gmail.com>"]
+license = "MIT"
+description = "exbot for rust"
+
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -28,6 +33,8 @@ axum = "0.6.20"
 tower = "0.4.13"
 tower-http = { version = "0.2", features = ["map-request-body", "util", "cors"] }
 uuid = { version = "1.4.1", features = ["v4", "fast-rng", "macro-diagnostics"] }
+utoipa = { version = "4.0.0", features = ["axum_extras"] }
+utoipa-redoc = { version = "1.0.0", features = ["axum"] }
 
 [features]
 default = ["async_config"]

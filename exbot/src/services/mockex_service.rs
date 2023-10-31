@@ -1,18 +1,28 @@
 use axum::{extract::State, http::HeaderMap, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
+use utoipa::ToSchema;
 
 use crate::error::Result;
 
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, ToSchema, Clone)]
 pub struct CreateOrderParam {
+    #[schema(example = "NEAR/USDT:USDT")]
     symbol: String,
     side: String,
     qty: f64,
     price: f64,
     reduce_only: bool,
 }
-
+#[utoipa::path(
+    post,
+    path = "/mix/place_order",
+    request_body = CreateOrderParam,
+    responses(
+        (status = 200, description = "created successfully"),
+        (status = 500, description = "internal error")
+    )
+)]
 pub async fn create_order(
     headers: HeaderMap,
     State(pool): State<SqlitePool>,

@@ -20,6 +20,11 @@ use tokio::signal;
 use tower_http::cors::{Any, CorsLayer};
 use tracing::{debug, info};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use utoipa::{
+    openapi::security::{ApiKey, ApiKeyValue, SecurityScheme},
+    Modify, OpenApi,
+};
+use utoipa_redoc::{Redoc, Servable};
 use uuid::Uuid;
 
 /// Exbot mock exchange program
@@ -70,12 +75,41 @@ async fn main() -> Result<()> {
         }
         Command::Daemon => {
             info!("Initializing daemon");
+            #[derive(OpenApi)]
+            #[openapi(
+				paths(
+                    mockex_service::create_order
+				),
+				components(
+                    schemas(mockex_service::CreateOrderParam)
+				),
+				modifiers(&SecurityAddon),
+				tags(
+					(name = "exbot mockex api", description = "Exbot mockex API")
+				)
+			)]
+            struct ApiDoc;
+
+            struct SecurityAddon;
+
+            impl Modify for SecurityAddon {
+                fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+                    if let Some(components) = openapi.components.as_mut() {
+                        components.add_security_scheme(
+                            "api_key",
+                            SecurityScheme::ApiKey(ApiKey::Header(ApiKeyValue::new("todo_apikey"))),
+                        )
+                    }
+                }
+            }
+
             config::with_config("mockex.toml", |c| async move {
                 debug!("With config: {:?}", c);
                 let pool = SqlitePool::connect(c.storage.unwrap().db_endpoint.as_str())
                     .await
                     .unwrap();
                 let app = Router::new()
+                    .merge(Redoc::with_url("/redoc", ApiDoc::openapi()))
                     .route("/", get(handler))
                     .route("/mix/place_order", post(mockex_service::create_order))
                     .with_state(pool)
