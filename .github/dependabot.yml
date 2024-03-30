@@ -16,4 +16,4 @@ updates:
   - package-ecosystem: "pip"
     directory: "/exbot-py/"
     schedule:
-      interval: "daily"
+      interval: "monthly"
